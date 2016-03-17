@@ -6,47 +6,68 @@ kafka:
     - kafka1.example.com:9092
     - kafka2.example.com:9092
     - kafka3.example.com:9092
-  topic: maxwell-mc
+  topic: maxwell-fake
 
 mysql:
   schemas:
-    - vc_tycoon
-    - vc_initech
-    - vc_acme
-  tables:
+    store-records:
+      names:
+          - store_records_tycoon
+          - store_records_initech
+      tables:
+        customers:
+          store_records_tycoon:
+            bootstrap-count: 10e6
+            insert-rate: 100 / second
+            update-rate: 20 / second
+            delete-rate: 20 / second
 
-    customers:
-      bootstrap-count: 10e6
-      insert-rate: 100 / second
-      update-rate: 20 / second
-      delete-rate: 20 / second
-      template:
-         id: integer[primary-key]
-         name: string[4,8]
-         loyalty_points: float[0,100]
-         last_transaction: date?
-         date_of_birth: date-time?
-         status: enum[active,expired,inactive]?
-         shoe_size: integer[8,25]?
+          store_records_initech:
+            bootstrap-count: 2e6
+            insert-rate: 20 / second
+            update-rate: 4 / second
+            delete-rate: 4 / second
 
-    orders:
-      bootstrap-count: 50e3
-      insert-rate: 50 / second
-      update-rate: 10 / second
-      delete-rate: 10 / second
-      template:
-        id: integer[primary-key]
-        customer: foreign-key[customers]
-        amount: integer[0,100]
-        item_id: foreign-key[items]
+          template:
+             id: integer[primary-key]
+             name: string[4,8]
+             loyalty_points: float[0,100]
+             last_transaction: date?
+             date_of_birth: date-time?
+             status: enum[active,expired,inactive]?
+             shoe_size: integer[8,25]?
 
-    items:
-      bootstrap-count: 100
-      insert-rate: 10 / second
-      update-rate: 5 / second
-      delete-rate: 5 / second
-      template:
-        id: integer[primary-key]
-        name: string[10,20]
-        price: float[0,10e6]
+        orders:
+          store_records_tycoon:
+            bootstrap-count: 50e3
+            insert-rate: 50 / second
+            update-rate: 10 / second
+            delete-rate: 10 / second
 
+          store_records_initech:
+            bootstrap-count: 10e3
+            insert-rate: 10 / second
+            update-rate: 2 / second
+            delete-rate: 2 / second
+
+          template:
+            id: integer[primary-key]
+            customer: foreign-key[customers]
+            amount: integer[0,100]
+            item_id: foreign-key[items]
+
+        items:
+          store_records_tycoon:
+            bootstrap-count: 5
+            insert-rate: 10 / second
+            update-rate: 5 / second
+            delete-rate: 5 / second
+          store_records_initech:
+            bootstrap-count: 5
+            insert-rate: 10 / second
+            update-rate: 5 / second
+            delete-rate: 5 / second
+          template:
+            id: integer[primary-key]
+            name: string[10,20]
+            price: float[0,10e6]
