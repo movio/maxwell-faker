@@ -1,0 +1,52 @@
+generator:
+  seed: glorious-potato
+
+kafka:
+  brokers:
+    - kafka1.example.com:9092
+    - kafka2.example.com:9092
+    - kafka3.example.com:9092
+  topic: maxwell-mc
+
+mysql:
+  schemas:
+    - vc_tycoon
+    - vc_initech
+    - vc_acme
+  tables:
+
+    customers:
+      bootstrap-count: 10e3
+      insert-rate: 100 / second
+      update-rate: 20 / second
+      delete-rate: 20 / second
+      template:
+         id: integer[primary-key]
+         name: string[10,20]
+         loyalty_points: float[0,100]
+         last_transaction: date?
+         date_of_birth: date-time?
+         status: enum[active,expired,inactive]?
+         shoe_size: integer[8,25]?
+
+    orders:
+      bootstrap-count: 50e3
+      insert-rate: 50 / second
+      update-rate: 10 / second
+      delete-rate: 10 / second
+      template:
+        id: integer[primary-key]
+        customer: foreign-key[customers]
+        amount: integer[0,100]
+        item_id: foreign-key[items]
+
+    items:
+      bootstrap-count: 100
+      insert-rate: 10 / second
+      update-rate: 5 / second
+      delete-rate: 5 / second
+      template:
+        id: integer[primary-key]
+        name: string[10,20]
+        price: float[0,10e6]
+
