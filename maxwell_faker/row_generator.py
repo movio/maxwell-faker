@@ -45,6 +45,9 @@ class RowGenerator(object):
             'enum': self.generate_enum,
             'string': self.generate_string
         }
+        for field in self.fields:
+            if self.fields[field].options == 'primary-key':
+                self.primary_key_field = field
 
     def generate_field(self, field, row_index):
         field_specification = self.fields[field]
@@ -67,7 +70,9 @@ class RowGenerator(object):
     def generate_foreign_key(self, row_index, field, field_options):
         foreign_table = field_options
         foreign_row_generator = RowGenerator.get_instance(foreign_table, self.config)
-
+        foreign_table_bootstrap_count = int(float(self.config['mysql']['tables'][foreign_table]['bootstrap-count']))
+        foreign_row_index = pseudorandom_long([self.seed, field, row_index], foreign_table_bootstrap_count)
+        return foreign_row_generator.generate_primary_key(foreign_row_index)
 
     def generate_date_time(self, row_index, field, field_options):
         lower, upper = 1142557409, 1773709409
@@ -83,8 +88,17 @@ class RowGenerator(object):
         return self.generate_date_time(row_index, field, field_options).split()[0]
 
     def generate_string(self, row_index, field, field_options):
+        if field_options == 'primary-key':
+            if self.table.lower().endswith('s'):
+                prefix = self.table[:-1]
+            else:
+                prefix = self.table
+            return "%s_%d" % (prefix.upper(), row_index)
         lower, upper = field_options.split(',')
         return pseudorandom_string([self.seed, field, row_index], int(lower), int(upper))
+
+    def generate_primary_key(self, row_index):
+        return self.generate_field(self.primary_key_field, row_index)
 
     def generate_row(self, row_index):
         row = {}
