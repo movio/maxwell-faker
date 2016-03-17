@@ -5,7 +5,7 @@ import re
 
 from datetime import datetime
 
-from utils import usage, pseudorandom_float, pseudorandom_int, pseudorandom_string
+from utils import usage, pseudorandom_float, pseudorandom_long, pseudorandom_string
 
 FIELD_SPECIFICATION = re.compile('([^\[\?]+)(\[.*\])?(\?)?')
 
@@ -49,7 +49,7 @@ class RowGenerator(object):
     def generate_field(self, field, row_index):
         field_specification = self.fields[field]
         if field_specification.optional:
-            should_generate = pseudorandom_int([self.seed, field, 'optional', row_index], 2)
+            should_generate = pseudorandom_long([self.seed, field, 'optional', row_index], 2)
             if not should_generate: return None
         return self.field_generators[field_specification.type](row_index, field, field_specification.options)
 
@@ -58,7 +58,7 @@ class RowGenerator(object):
             return 1 + row_index
         else:
             lower, upper = field_options.split(',')
-            return pseudorandom_int([self.seed, field, row_index], int(lower), int(upper))
+            return pseudorandom_long([self.seed, field, row_index], int(lower), int(upper))
 
     def generate_float_field(self, row_index, field, field_options):
         lower, upper = field_options.split(',')
@@ -68,15 +68,16 @@ class RowGenerator(object):
         foreign_table = field_options
         foreign_row_generator = RowGenerator.get_instance(foreign_table, self.config)
 
+
     def generate_date_time(self, row_index, field, field_options):
         lower, upper = 1142557409, 1773709409
-        epoch = pseudorandom_int([self.seed, field, row_index], lower, upper)
+        epoch = pseudorandom_long([self.seed, field, row_index], lower, upper)
         format = "%Y-%m-%d %H:%M:%S"
         return datetime.fromtimestamp(epoch).strftime(format)
 
     def generate_enum(self, row_index, field, field_options):
         values = field_options.split(',')
-        return values[pseudorandom_int([self.seed, field, row_index], 0, len(values))]
+        return values[pseudorandom_long([self.seed, field, row_index], 0, len(values))]
 
     def generate_date(self, row_index, field, field_options):
         return self.generate_date_time(row_index, field, field_options).split()[0]
