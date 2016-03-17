@@ -41,18 +41,15 @@ def bootstrap(schema, table, config):
 
 def bootstrap_insert_messages(schema, table, config):
     count = int(float(config['mysql']['tables'][table]['bootstrap-count']))
-    row_generator = RowGenerator(table, config)
-    for i in xrange(1, count + 1):
-        yield maxwell_message(schema, table, "bootstrap-insert", row_generator.generate_row(i))
+    row_generator = RowGenerator.get_instance(table, config)
+    for row_index in xrange(count):
+        yield maxwell_message(schema, table, "bootstrap-insert", row_generator.generate_row(row_index))
 
 def main():
-    parser = argparse.ArgumentParser(description='Feed Maxwell metrics into Prometheus.')
-    parser.add_argument('--config', metavar='CONFIG', type=str, required=True,
-                        help='path to yaml config file')
-    parser.add_argument('--schema', metavar='SCHEMA', type=str, required=True,
-                        help='schema to bootstrap')
-    parser.add_argument('--table', metavar='TABLE', type=str, required=True,
-                        help='table to bootstrap')
+    parser = argparse.ArgumentParser(description='Generate fake data for Maxwell.')
+    parser.add_argument('--config', metavar='CONFIG', type=str, required=True, help='path to yaml config file')
+    parser.add_argument('--schema', metavar='SCHEMA', type=str, required=True, help='schema to bootstrap')
+    parser.add_argument('--table', metavar='TABLE', type=str, required=True, help='table to bootstrap')
     args = parser.parse_args()
     config = yaml.load(open(args.config).read())
     validate_config(config)

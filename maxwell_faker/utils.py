@@ -12,21 +12,20 @@ def usage(msg):
     sys.stderr.write('Error: ' + msg + '\n')
     sys.exit(1)
 
-def fake_random_int(seed, specifier, i, a, b = None):
-    if b is None: a, b = 0, a
-    a, b = long(a), long(b)
-    return (zlib.crc32(str(seed) + str(specifier) + str(i) + str(a) + str(b)) % (b - a)) + a
+def pseudorandom_int(specifier, lower, upper = None):
+    if upper is None: lower, upper = 0, lower
+    lower, upper = long(lower), long(upper)
+    return (zlib.crc32("%s|%d|%d" % (specifier, lower, upper)) % (upper - lower)) + lower
 
-def fake_random_float(seed, specifier, i, a, b = None):
-    if b is None: a, b = 0, a
-    return fake_random_int(seed, specifier, i, a * 100, b * 100) / 100.0
+def pseudorandom_float(specifier, lower, upper = None):
+    if upper is None: lower, upper = 0, lower
+    return pseudorandom_int(specifier, lower * 100, upper * 100) / 100.0
 
-def fake_random_string(seed, specifier, i, a, b = None):
-    if b is None: a, b = 0, a
-    length = fake_random_int(seed, [specifier, 'length'], i, a, b)
+def pseudorandom_string(specifier, lower, upper = None):
+    if upper is None: lower, upper = 0, lower
+    length = pseudorandom_int([specifier, 'length'], lower, upper)
     result = ""
     while len(result) < length:
-        index = fake_random_int(seed, [specifier, 'syllable', str(len(result))], i, 0, len(SYLLABLES))
+        index = pseudorandom_int([specifier, 'syllable', len(result)], 0, len(SYLLABLES))
         result += SYLLABLES[index]
     return result[:length]
-

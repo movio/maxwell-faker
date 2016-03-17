@@ -5,7 +5,7 @@ import re
 
 from datetime import datetime
 
-from utils import usage, fake_random_float, fake_random_int, fake_random_string
+from utils import usage, pseudorandom_float, pseudorandom_int, pseudorandom_string
 
 FIELD_SPECIFICATION = re.compile('([^\[\?]+)(\[.*\])?(\?)?')
 
@@ -23,7 +23,14 @@ class Field(object):
 
 class RowGenerator(object):
 
-    def __init__(self, table, config):
+    @staticmethod
+    def get_instance(table, config, instances = {}):
+        if table not in instances:
+            instances[table] = RowGenerator(table, config, using_get_instance = True)
+        return instances[table]
+
+    def __init__(self, table, config, using_get_instance = False):
+        if not using_get_instance: raise ValueError("Use RowGenerator.get_instance to get RowGenerator instances")
         self.table = table
         self.config = config
         self.template = config['mysql']['tables'][table]['template']
@@ -39,48 +46,49 @@ class RowGenerator(object):
             'string': self.generate_string
         }
 
-    def generate_field(self, field, id):
+    def generate_field(self, field, row_index):
         field_specification = self.fields[field]
         if field_specification.optional:
-            should_generate = fake_random_int(self.seed, [field, 'optional'], id, 2)
+            should_generate = pseudorandom_int([self.seed, field, 'optional', row_index], 2)
             if not should_generate: return None
-        return self.field_generators[field_specification.type](id, field, field_specification.options)
+        return self.field_generators[field_specification.type](row_index, field, field_specification.options)
 
-    def generate_integer_field(self, id, field, field_options):
+    def generate_integer_field(self, row_index, field, field_options):
         if field_options == "primary-key":
-            return id
+            return 1 + row_index
         else:
             lower, upper = field_options.split(',')
-            return fake_random_int(self.seed, field, id, int(lower), int(upper))
+            return pseudorandom_int([self.seed, field, row_index], int(lower), int(upper))
 
-    def generate_float_field(self, id, field, field_options):
+    def generate_float_field(self, row_index, field, field_options):
         lower, upper = field_options.split(',')
-        return fake_random_float(self.seed, field, id, float(lower), float(upper))
+        return pseudorandom_float([self.seed, field, row_index], float(lower), float(upper))
 
-    def generate_foreign_key(self, id, field, field_options):
-        pass
+    def generate_foreign_key(self, row_index, field, field_options):
+        foreign_table = field_options
+        foreign_row_generator = RowGenerator.get_instance(foreign_table, self.config)
 
-    def generate_date_time(self, id, field, field_options):
+    def generate_date_time(self, row_index, field, field_options):
         lower, upper = 1142557409, 1773709409
-        epoch = fake_random_int(self.seed, field, id, lower, upper)
+        epoch = pseudorandom_int([self.seed, field, row_index], lower, upper)
         format = "%Y-%m-%d %H:%M:%S"
         return datetime.fromtimestamp(epoch).strftime(format)
 
-    def generate_enum(self, id, field, field_options):
+    def generate_enum(self, row_index, field, field_options):
         values = field_options.split(',')
-        return values[fake_random_int(self.seed, field, id, 0, len(values))]
+        return values[pseudorandom_int([self.seed, field, row_index], 0, len(values))]
 
-    def generate_date(self, id, field, field_options):
-        return self.generate_date_time(id, field, field_options).split()[0]
+    def generate_date(self, row_index, field, field_options):
+        return self.generate_date_time(row_index, field, field_options).split()[0]
 
-    def generate_string(self, id, field, field_options):
+    def generate_string(self, row_index, field, field_options):
         lower, upper = field_options.split(',')
-        return fake_random_string(self.seed, field, id, int(lower), int(upper))
+        return pseudorandom_string([self.seed, field, row_index], int(lower), int(upper))
 
-    def generate_row(self, id):
+    def generate_row(self, row_index):
         row = {}
         for field in self.fields:
-            value = self.generate_field(field, id)
+            value = self.generate_field(field, row_index)
             if value is not None:
                 row[field] = value
         return row
