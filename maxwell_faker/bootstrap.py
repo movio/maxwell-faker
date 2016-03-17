@@ -51,7 +51,7 @@ def find_schema(config, database, table):
     return found_schema
 
 def main():
-    parser = argparse.ArgumentParser(description='Generate fake data for Maxwell.')
+    parser = argparse.ArgumentParser(description='Maxwell faker for systems and load testing.')
     parser.add_argument('--config', metavar='CONFIG', type=str, required=True, help='path to yaml config file')
     parser.add_argument('--database', metavar='DATABASE', type=str, required=True, help='database to bootstrap')
     parser.add_argument('--table', metavar='TABLE', type=str, required=True, help='table to bootstrap')
@@ -59,4 +59,9 @@ def main():
     config = yaml.load(open(args.config).read())
     schema = find_schema(config, args.database, args.table)
     validate_config(config)
-    bootstrap(schema, args.database, args.table, config)
+    try:
+        bootstrap(schema, args.database, args.table, config)
+    except IOError, e:
+        usage(e)
+    except KeyboardInterrupt:
+        pass

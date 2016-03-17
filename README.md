@@ -1,3 +1,3 @@
-# maxwell-faker Fake data generator for Maxwell
+# Maxwell faker for systems and load testing
 
 TBD
