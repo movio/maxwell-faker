@@ -16,13 +16,13 @@ mysql:
   tables:
 
     customers:
-      bootstrap-count: 10e3
+      bootstrap-count: 10e6
       insert-rate: 100 / second
       update-rate: 20 / second
       delete-rate: 20 / second
       template:
          id: integer[primary-key]
-         name: string[10,20]
+         name: string[4,8]
          loyalty_points: float[0,100]
          last_transaction: date?
          date_of_birth: date-time?

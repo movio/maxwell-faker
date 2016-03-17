@@ -5,9 +5,21 @@ import re
 
 from datetime import datetime
 
-from utils import usage, fake_random_float, fake_random_int
+from utils import usage, fake_random_float, fake_random_int, fake_random_string
 
 FIELD_SPECIFICATION = re.compile('([^\[\?]+)(\[.*\])?(\?)?')
+
+class Field(object):
+
+    def __init__(self, name, specification):
+        match = FIELD_SPECIFICATION.match(specification)
+        if match is None: usage('invalid field specification: ' + specification)
+        field_type, field_options, field_optional = match.group(1), match.group(2), match.group(3)
+        if field_options is not None: field_options = field_options[1:-1]
+        self.name = name
+        self.optional = field_optional
+        self.options = field_options
+        self.type = field_type
 
 class RowGenerator(object):
 
@@ -15,27 +27,24 @@ class RowGenerator(object):
         self.table = table
         self.config = config
         self.template = config['mysql']['tables'][table]['template']
+        self.fields = { key: Field(key, self.template[key]) for key in self.template }
         self.seed = config['generator']['seed']
-
-    def fields(self):
-        return self.template.keys()
-
-    def generate_field(self, field, id):
-        field_specification = self.config['mysql']['tables'][self.table]['template'][field]
-        match = FIELD_SPECIFICATION.match(field_specification)
-        if match is None: usage('invalid field specification: ' + field_specification)
-        field_type, field_options, field_optional = match.group(1), match.group(2), match.group(3)
-        if field_options is not None: field_options = field_options[1:-1]
-        if field_optional:
-            should_generate = fake_random_int(self.seed, [field, 'optional'], id, 2)
-            if not should_generate: return None
-        return {
+        self.field_generators = {
             'integer': self.generate_integer_field,
             'float': self.generate_float_field,
             'foreign-key': self.generate_foreign_key,
             'date-time': self.generate_date_time,
-            'enum': self.generate_enum
-        }[field_type](id, field, field_options)
+            'date': self.generate_date,
+            'enum': self.generate_enum,
+            'string': self.generate_string
+        }
+
+    def generate_field(self, field, id):
+        field_specification = self.fields[field]
+        if field_specification.optional:
+            should_generate = fake_random_int(self.seed, [field, 'optional'], id, 2)
+            if not should_generate: return None
+        return self.field_generators[field_specification.type](id, field, field_specification.options)
 
     def generate_integer_field(self, id, field, field_options):
         if field_options == "primary-key":
@@ -58,11 +67,19 @@ class RowGenerator(object):
         return datetime.fromtimestamp(epoch).strftime(format)
 
     def generate_enum(self, id, field, field_options):
-        pass
+        values = field_options.split(',')
+        return values[fake_random_int(self.seed, field, id, 0, len(values))]
+
+    def generate_date(self, id, field, field_options):
+        return self.generate_date_time(id, field, field_options).split()[0]
+
+    def generate_string(self, id, field, field_options):
+        lower, upper = field_options.split(',')
+        return fake_random_string(self.seed, field, id, int(lower), int(upper))
 
     def generate_row(self, id):
         row = {}
-        for field in self.fields():
+        for field in self.fields:
             value = self.generate_field(field, id)
             if value is not None:
                 row[field] = value
