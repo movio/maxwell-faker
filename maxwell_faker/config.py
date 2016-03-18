@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import re
-
-from utils import usage
+import sys
 
 KAFKA_BROKER_CONNECTION_RE = re.compile('^.+:\d+$')
 FIELD_SPECIFICATION_RE = re.compile('^([^\[\?]+)(\[.*\])?(\?)?$')
@@ -21,9 +20,13 @@ class Field(object):
         self.type = field_type
 
 
-def check(message, predicate):
+def check(message, predicate, path = None):
     if not predicate:
-        usage(message)
+        if path:
+            sys.stderr.write('configuration error at: ' + path + '\n\n' + message + '\n')
+        else:
+            sys.stderr.write('configuration error: ' + message + '\n')
+        sys.exit(1)
 
 def validate_config(config):
     validate_generator_section(config)
@@ -36,8 +39,9 @@ def validate_generator_section(config):
         'generator' in config
     )
     check(
-        'value "generator.seed" is missing',
-        'seed' in config['generator']
+        'value "seed" is missing',
+        'seed' in config['generator'],
+        'generator'
     )
 
 
@@ -47,21 +51,25 @@ def validate_kafka_section(config):
         'kafka' in config
     )
     check(
-        'section "kafka.brokers" is missing',
-        'brokers' in config['kafka']
+        'section "brokers" is missing',
+        'brokers' in config['kafka'],
+        'kafka'
     )
     check(
-        'section "kafka.brokers" should be a list',
-        type(config['kafka']['brokers']) is list
+        'section "brokers" should be a list',
+        type(config['kafka']['brokers']) is list,
+        'kafka'
     )
     check(
-        'section "kafka.topic" is missing',
-        'topic' in config['kafka']
+        'section "topic" is missing',
+        'topic' in config['kafka'],
+        'kafka'
     )
     for item in config['kafka']['brokers']:
         check(
-            'items in section "kafka.brokers" must be of format host:port',
-            KAFKA_BROKER_CONNECTION_RE.match(item)
+            'brokers must be of format HOST:PORT',
+            KAFKA_BROKER_CONNECTION_RE.match(item),
+            'kafka.brokers'
         )
 
 
@@ -71,90 +79,105 @@ def validate_mysql_section(config):
         'mysql' in config
     )
     check(
-        'section "mysql.schemas" is missing',
-        'schemas' in config['mysql']
+        'section "schemas" is missing',
+        'schemas' in config['mysql'],
+        'mysql'
     )
     for schema in config['mysql']['schemas']:
-        validate_mysql_schema_section(config, schema)
+        validate_mysql_schema_section(config, "mysql.schemas." + schema, schema)
 
 
-def validate_mysql_schema_section(config, schema):
+def validate_mysql_schema_section(config, path, schema):
     check(
-        'section "mysql.schemas.<schema>.databases" is missing',
-        'databases' in config['mysql']['schemas'][schema]
+        'section "databases" is missing',
+        'databases' in config['mysql']['schemas'][schema],
+        path
     )
     check(
-        'section "mysql.schemas.<schema>.databases" should be a list',
-        type(config['mysql']['schemas'][schema]['databases'] is list)
+        'section "databases" should be a list',
+        type(config['mysql']['schemas'][schema]['databases'] is list),
+        path
     )
     check(
-        'section "mysql.schemas.<schema>.tables" is missing ',
-        'tables' in config['mysql']['schemas'][schema]
+        'section "tables" is missing ',
+        'tables' in config['mysql']['schemas'][schema],
+        path
     )
     check(
-        'section "mysql.schemas.<schema>.tables" should be a mapping',
-        type(config['mysql']['schemas'][schema]['tables'] is dict)
+        'section "tables" should be a mapping',
+        type(config['mysql']['schemas'][schema]['tables'] is dict),
+        path
     )
     for table in config['mysql']['schemas'][schema]['tables']:
-        validate_mysql_table_section(config, schema, table)
+        validate_mysql_table_section(config, path + '.tables.' + table, schema, table)
 
 
-def validate_mysql_table_section(config, schema, table):
+def validate_mysql_table_section(config, path, schema, table):
     section = config['mysql']['schemas'][schema]['tables'][table]
     for database in config['mysql']['schemas'][schema]['databases']:
         check(
-            'section "mysql.schemas.<schema>.tables.<table>.<database>" is missing',
-            database in section
+            'section "%s" is missing' % database,
+            database in section,
+            path
         )
-        validate_database_table_section(config, schema, table, database)
+        validate_database_table_section(config, path + '.' + database, schema, table, database)
     check(
-        'table section is missing "template"',
-        'template' in section
+        'section is missing "template"',
+        'template' in section,
+        path
     )
-    validate_table_template_section(config, schema, table)
+    validate_table_template_section(config, path, schema, table)
 
 
-def validate_database_table_section(config, schema, table, database):
+def validate_database_table_section(config, path, schema, table, database):
     section = config['mysql']['schemas'][schema]['tables'][table]
     check(
-        'database table section is missing "bootstrap-count"',
-        'bootstrap-count' in section[database]
+        'section is missing "bootstrap-count"',
+        'bootstrap-count' in section[database],
+        path
     )
     check(
-        'database table section is missing "insert-rate"',
-        'insert-rate' in section[database]
+        'section is missing "insert-rate"',
+        'insert-rate' in section[database],
+        path
     )
     check(
-        'database table section is missing "update-rate"',
-        'update-rate' in section[database]
+        'section is missing "update-rate"',
+        'update-rate' in section[database],
+        path
     )
     check(
-        'database table section is missing "delete-rate"',
-        'delete-rate' in section[database]
+        'section is missing "delete-rate"',
+        'delete-rate' in section[database],
+        path
     )
     check(
         '"insert-rate" must be of format NUMBER / [second|minute|hour|day]',
-        RATE_RE.match(section[database]['insert-rate'])
+        RATE_RE.match(section[database]['insert-rate']),
+        path
     )
     check(
         '"update-rate" must be of format NUMBER / [second|minute|hour|day]',
-        RATE_RE.match(section[database]['update-rate'])
+        RATE_RE.match(section[database]['update-rate']),
+        path
     )
     check(
         '"delete-rate" must be of format NUMBER / [second|minute|hour|day]',
-        RATE_RE.match(section[database]['delete-rate'])
+        RATE_RE.match(section[database]['delete-rate']),
+        path
     )
 
-def validate_table_template_section(config, schema, table):
+def validate_table_template_section(config, path, schema, table):
     section = config['mysql']['schemas'][schema]['tables'][table]['template']
     for field in section:
         specification = config['mysql']['schemas'][schema]['tables'][table]['template'][field]
-        validate_table_template_field_options(field, specification)
+        validate_table_template_field_options(path + '.template.' + field, field, specification)
 
-def validate_table_template_field_options(field_name, specification):
+def validate_table_template_field_options(path, field_name, specification):
     check(
         'table field specification must be of format <field_type>[<options>]{?}',
-        FIELD_SPECIFICATION_RE.match(specification)
+        FIELD_SPECIFICATION_RE.match(specification),
+        path
     )
     field = Field(field_name, specification)
     check(
@@ -167,5 +190,6 @@ def validate_table_template_field_options(field_name, specification):
             'date-time',
             'enum',
             'foreign-key'
-        ]
+        ],
+        path
     )
