@@ -57,8 +57,8 @@ def main():
     parser.add_argument('--table', metavar='TABLE', type=str, required=True, help='table to bootstrap')
     args = parser.parse_args()
     config = yaml.load(open(args.config).read())
-    schema = find_schema(config, args.database, args.table)
     validate_config(config)
+    schema = find_schema(config, args.database, args.table)
     try:
         bootstrap(schema, args.database, args.table, config)
     except IOError, e:
