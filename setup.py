@@ -14,7 +14,8 @@ setup(
         'Development Status :: 2 - Pre-Alpha',
         'Intended Audience :: Developers',
         'Intended Audience :: System Administrators',
-        'Topic :: System :: Monitoring',
+        'Topic :: Database',
+        'Topic :: Software Development :: Testing'
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.7',

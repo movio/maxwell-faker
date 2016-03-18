@@ -6,20 +6,7 @@ import re
 from datetime import datetime
 
 from utils import usage, pseudorandom_float, pseudorandom_long, pseudorandom_string
-
-FIELD_SPECIFICATION = re.compile('([^\[\?]+)(\[.*\])?(\?)?')
-
-class Field(object):
-
-    def __init__(self, name, specification):
-        match = FIELD_SPECIFICATION.match(specification)
-        if match is None: usage('invalid field specification: ' + specification)
-        field_type, field_options, field_optional = match.group(1), match.group(2), match.group(3)
-        if field_options is not None: field_options = field_options[1:-1]
-        self.name = name
-        self.optional = field_optional
-        self.options = field_options
-        self.type = field_type
+from config import Field
 
 class RowGenerator(object):
 
