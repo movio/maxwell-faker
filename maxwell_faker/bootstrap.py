@@ -46,23 +46,37 @@ def pretty_duration(millis, elapsedMillis):
     else:
         return ""
 
-def produce(producer, topic, partition, message):
-    producer.send(topic, key = "hello", value = message, partition = partition)
+def produce(producer, topic, partition, key, value):
+    producer.send(topic, key = key, value = value, partition = partition)
 
-def maxwell_message(database, table, type, data):
-    return json.dumps({
+def maxwell_message(database, table, type, data, pk_name, pk_value):
+    key = json.dumps({
+        "database": database,
+        "table": table,
+        "pk." + pk_name: pk_value
+    })
+    value = json.dumps({
         "database": database,
         "table": table,
         "type": type,
         "ts": int(time()),
         "data": data
     })
+    return key, value
 
-def bootstrap_start_message(database, table):
-    return maxwell_message(database, table, "bootstrap-start", {})
+def bootstrap_start_message(schema, database, table, config):
+    row_generator = RowGenerator.get_instance(schema, database, table, config)
+    data = {}
+    pk_name = row_generator.primary_key_field
+    pk_value = None
+    return maxwell_message(database, table, "bootstrap-start", data, pk_name, pk_value)
 
-def bootstrap_complete_message(database, table):
-    return maxwell_message(database, table, "bootstrap-complete", {})
+def bootstrap_complete_message(schema, database, table, config):
+    row_generator = RowGenerator.get_instance(schema, database, table, config)
+    data = {}
+    pk_name = row_generator.primary_key_field
+    pk_value = None
+    return maxwell_message(database, table, "bootstrap-complete", data, pk_name, pk_value)
 
 def bootstrap(producer, schema, database, table, config):
     topic = config['kafka']['topic']
@@ -71,18 +85,21 @@ def bootstrap(producer, schema, database, table, config):
     total_rows = int(float(config['mysql']['schemas'][schema]['tables'][table][database]['bootstrap-count']))
     partition_count = 1 + max(producer.partitions_for(topic))
     partition = abs(java_string_hashcode(database) % partition_count)
-    produce(producer, topic, partition, bootstrap_start_message(database, table))
-    for message in bootstrap_insert_messages(schema, database, table, config, total_rows):
-        produce(producer, topic, partition, message)
+    produce(producer, topic, partition, *bootstrap_start_message(schema, database, table, config))
+    for key, value in bootstrap_insert_messages(schema, database, table, config, total_rows):
+        produce(producer, topic, partition, key, value)
         inserted_rows += 1
         display_progress(total_rows, inserted_rows, start_time_millis)
-    produce(producer, topic, partition, bootstrap_complete_message(database, table))
+    produce(producer, topic, partition, *bootstrap_complete_message(schema, database, table, config))
     display_line("")
 
 def bootstrap_insert_messages(schema, database, table, config, rows_total):
     row_generator = RowGenerator.get_instance(schema, database, table, config)
     for row_index in xrange(rows_total):
-        yield maxwell_message(database, table, "bootstrap-insert", row_generator.generate_row(row_index))
+        data = row_generator.generate_row(row_index)
+        pk_name = row_generator.primary_key_field
+        pk_value = row_generator.generate_primary_key(row_index)
+        yield maxwell_message(database, table, "bootstrap-insert", data, pk_name, pk_value)
 
 def find_schema(config, database, table):
     found_schema = None
@@ -107,12 +124,7 @@ def main():
     producer = KafkaProducer(bootstrap_servers = config['kafka']['brokers'])
     try:
         bootstrap(producer, schema, args.database, args.table, config)
-    except IOError, e:
-        usage(e)
     except KeyboardInterrupt:
-        print
-    finally:
-        print "flushing producer..." + 20 * " "
-        producer.flush()
-        producer.close()
-        print "done"
+        sys.exit(1)
+    producer.flush()
+    producer.close()
