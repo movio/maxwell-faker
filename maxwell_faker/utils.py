@@ -12,6 +12,13 @@ def usage(msg):
     sys.stderr.write('Error: ' + msg + '\n')
     sys.exit(1)
 
+def java_string_hashcode(s):
+    """source: http://garage.pimentech.net/libcommonPython_src_python_libcommon_javastringhashcode/"""
+    h = 0
+    for c in s:
+        h = (31 * h + ord(c)) & 0xFFFFFFFF
+    return ((h + 0x80000000) & 0xFFFFFFFF) - 0x80000000
+
 def pseudorandom_long(specifier, lower, upper = None):
     if upper is None: lower, upper = 0, lower
     lower, upper = long(lower), long(upper)
