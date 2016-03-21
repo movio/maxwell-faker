@@ -42,7 +42,6 @@ def main():
 
     kafka_producer = KafkaProducer(bootstrap_servers=config['kafka']['brokers'])
     try:
-
         produce_func = generate_produce_func(config, kafka_producer)
         produce_messages(produce_func, args, config)
     except IOError, e:
@@ -75,9 +74,7 @@ def produce_messages(produce_func, args, config):
     for schema in config['mysql']['schemas']:
         for database in config['mysql']['schemas'][schema]['databases']:
             for table in config['mysql']['schemas'][schema]['tables']:
-                row_generator = RowGenerator.get_instance(schema, database, table, config)
-                producers.extend(generate_producers_for_table(produce_func, seed, schema, database, table, config,
-                                                              row_generator))
+                producers.extend(generate_producers_for_table(produce_func, seed, schema, database, table, config))
 
     # Filter producer by arguments
     producers = filter(lambda x: args.schema is None or x.table.schema == args.schema, producers)
@@ -94,9 +91,10 @@ def produce_messages(produce_func, args, config):
         sleep(0.01)
 
 
-def generate_producers_for_table(produce_func, seed, schema, database, table_name, config, row_gen):
+def generate_producers_for_table(produce_func, seed, schema, database, table_name, config):
     operation_desc = config['mysql']['schemas'][schema]['tables'][table_name][database]
     max_id = int(float(operation_desc['size']))
+    row_gen = RowGenerator.get_instance(schema, database, table_name, config)
     table = Table(max_id, schema, database, table_name, seed, row_gen)
     producers = []
 
