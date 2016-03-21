@@ -96,7 +96,7 @@ def produce_messages(produce_func, args, config):
 
 def generate_producers_for_table(produce_func, seed, schema, database, table_name, config, row_gen):
     operation_desc = config['mysql']['schemas'][schema]['tables'][table_name][database]
-    max_id = int(float(operation_desc['bootstrap-count']))
+    max_id = int(float(operation_desc['size']))
     table = Table(max_id, schema, database, table_name, seed, row_gen)
     producers = []
 
