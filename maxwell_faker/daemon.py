@@ -32,7 +32,7 @@ def maxwell_message(database, table, operation, data, pk_name, pk_value):
 def main():
     parser = argparse.ArgumentParser(description='Fake Maxwell data into Kafka.')
     parser.add_argument('--config', metavar='CONFIG', type=str, required=True, help='path to yaml config file')
-    parser.add_argument('--schema', metavar='SCHEMA', type=str, required=True, help='schema to produce')
+    parser.add_argument('--schema', metavar='SCHEMA', type=str, required=False, help='schema to produce')
     parser.add_argument('--database', metavar='DATABASE', type=str, required=False, help='database to produce')
     parser.add_argument('--table', metavar='TABLE', type=str, required=False, help='table to produce')
     parser.add_argument('-c', action='store_true', required=False, help='produce message to console')
@@ -55,26 +55,25 @@ def generate_kafka_producer_consumer(config):
     kafka_producer = KafkaProducer(bootstrap_servers=config['kafka']['brokers'])
     partition_count = 1 + max(kafka_producer.partitions_for(topic))
 
-    def produce(key, value):
+    def consume(key, value):
         database = key['database']
         key_str = json.dumps(key)
         value_str = json.dumps(value)
         partition = abs(java_string_hashcode(database) % partition_count)
         kafka_producer.send(topic, key=key_str, value=value_str, partition=partition)
 
-    return produce
+    return consume
 
 
 def generate_console_consumer():
-    def produce(key, value):
+    def consume(key, value):
         print key, value
-    return produce
+    return consume
 
 
 def produce_messages(f_consume, args, config):
     seed = config['generator']['seed']
     producers = []
-    timer = Timer()
 
     # iterate all schema, database and table
     for schema in config['mysql']['schemas']:
@@ -91,6 +90,7 @@ def produce_messages(f_consume, args, config):
     if len(producers) == 0: usage('could not find specified table')
 
     # Check lag and try produce every 10 ms
+    timer = Timer()
     timer.start()
     while True:
         timer.tick()
@@ -99,7 +99,7 @@ def produce_messages(f_consume, args, config):
             message_thunks.extend(p.try_produce_thunks(timer.time_elapsed_ms))
 
         # sort thunks by timestamp, to ensure the output order
-        message_thunks.sort(key=lambda tp: tp[0])
+        message_thunks.sort()
 
         # generation message in time-order, evaluate thunks to get message and apply the consume function
         for order_key, f_produce_one in message_thunks:
