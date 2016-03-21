@@ -69,6 +69,7 @@ def generate_produce_func(config, kafka_producer):
 def produce_messages(produce_func, args, config):
     seed = config['generator']['seed']
     producers = []
+    timer = Timer()
 
     # iterate all schema, database and table
     for schema in config['mysql']['schemas']:
@@ -85,9 +86,11 @@ def produce_messages(produce_func, args, config):
     if len(producers) == 0: usage('could not find specified table')
 
     # Check lag and try produce every 10 ms
+    timer.start()
     while True:
+        timer.tick()
         for p in producers:
-            p.try_produce()
+            p.try_produce(timer.time_elapsed_ms)
         sleep(0.01)
 
 
@@ -134,6 +137,18 @@ def parse_rate(rate_srt):
     return rate
 
 
+class Timer(object):
+    def __init__(self):
+        self.start_time_ms = 0
+        self.time_elapsed_ms = 0
+
+    def start(self):
+        self.start_time_ms = time() * 1000.0
+
+    def tick(self):
+        self.time_elapsed_ms = time() * 1000.0 - self.start_time_ms
+
+
 class Table(object):
     def __init__(self, max_id, schema, database, table_name, seed, row_gen):
         self.schema = schema
@@ -150,11 +165,9 @@ class MessageProducer(object):
         self.table = table
         self.rate = rate
         self.operation = operation
-        self.start_time = time() * 1000.0
         self.produced_count = 0
 
-    def try_produce(self):
-        time_elapsed = time() * 1000.0 - self.start_time
+    def try_produce(self, time_elapsed):
         should_have_produced = int(self.rate * time_elapsed)
         num_to_produce = should_have_produced - self.produced_count
         for i in range(0, num_to_produce):
@@ -162,14 +175,15 @@ class MessageProducer(object):
 
     def produce_one(self):
         if self.operation == 'insert':
-            self.table.max_id += 1
-            self.produced_count += 1
+            # max id is the next row index, because id is 1 based, row index is 0 based
             row_idx = self.table.max_id
+            self.table.max_id += 1
         else:
-            self.produced_count += 1
             # generate id for update and delete message
             row_idx = pseudorandom_long([self.table.seed, 'id', self.operation, self.produced_count], 0,
                                         self.table.max_id)
+
+        self.produced_count += 1
         row_gen = self.table.row_gen
         data = row_gen.generate_row(row_idx)
         pk_name = row_gen.primary_key_field
