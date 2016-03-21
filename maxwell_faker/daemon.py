@@ -35,25 +35,24 @@ def main():
     parser.add_argument('--schema', metavar='SCHEMA', type=str, required=True, help='schema to produce')
     parser.add_argument('--database', metavar='DATABASE', type=str, required=False, help='database to produce')
     parser.add_argument('--table', metavar='TABLE', type=str, required=False, help='table to produce')
+    parser.add_argument('-c', action='store_true', required=False, help='produce message to console')
     args = parser.parse_args()
 
     config = yaml.load(open(args.config).read())
     validate_config(config)
 
-    kafka_producer = KafkaProducer(bootstrap_servers=config['kafka']['brokers'])
     try:
-        f_consume = generate_kafka_producer_consumer(config, kafka_producer)
+        f_consume = generate_console_consumer() if args.c else generate_kafka_producer_consumer(config)
         produce_messages(f_consume, args, config)
     except IOError, e:
         usage(e)
     except KeyboardInterrupt:
-        kafka_producer.flush()
-        kafka_producer.close()
         sys.exit(1)
 
 
-def generate_kafka_producer_consumer(config, kafka_producer):
+def generate_kafka_producer_consumer(config):
     topic = config['kafka']['topic']
+    kafka_producer = KafkaProducer(bootstrap_servers=config['kafka']['brokers'])
     partition_count = 1 + max(kafka_producer.partitions_for(topic))
 
     def produce(key, value):
@@ -63,6 +62,12 @@ def generate_kafka_producer_consumer(config, kafka_producer):
         partition = abs(java_string_hashcode(database) % partition_count)
         kafka_producer.send(topic, key=key_str, value=value_str, partition=partition)
 
+    return produce
+
+
+def generate_console_consumer():
+    def produce(key, value):
+        print key, value
     return produce
 
 
@@ -93,13 +98,12 @@ def produce_messages(f_consume, args, config):
         for p in producers:
             message_thunks.extend(p.try_produce_thunks(timer.time_elapsed_ms))
 
-        # sort thunks by timestamp
+        # sort thunks by timestamp, to ensure the output order
         message_thunks.sort(key=lambda tp: tp[0])
 
-        # generation message in time-order
+        # generation message in time-order, evaluate thunks to get message and apply the consume function
         for order_key, f_produce_one in message_thunks:
             msg_key, msg_value = f_produce_one()
-            # apply consume function
             f_consume(msg_key, msg_value)
 
         sleep(0.01)
