@@ -35,9 +35,9 @@ Maxwell Faker is configured through a single YAML file. See [example.yaml](https
 | `kafka.topic`                                                | Kafka topic to produce messages to |
 | `mysql.schemas.<schema>.databases`                           | list of databases for the specified schema |
 | `mysql.schemas.<schema>.tables.<table>.<db>.size`            | number of rows to insert when bootstrapping |
-| `mysql.schemas.<schema>.tables.<table>.<db>.insert-rate`     | insert rate of the specified table |
-| `mysql.schemas.<schema>.tables.<table>.<db>.update-rate`     | update rate of the specified table |
-| `mysql.schemas.<schema>.tables.<table>.<db>.delete-rate`     | delete rate of the specified table |
+| `mysql.schemas.<schema>.tables.<table>.<db>.insert-rate`     | insert rate of the specified table (see below) |
+| `mysql.schemas.<schema>.tables.<table>.<db>.update-rate`     | update rate of the specified table (see below) |
+| `mysql.schemas.<schema>.tables.<table>.<db>.delete-rate`     | delete rate of the specified table (see below) |
 | `mysql.schemas.<schema>.tables.<table>.template.<column>`    | column definition (see below) |
 
 ## Column Definition Syntax
@@ -59,6 +59,10 @@ The supported types and options are as follows:
 
 All column definitions can be suffixed by a `?` to denote a nullable column.
 
+## Message Rate Syntax
+
+The syntax for insert, update and delete rates is `NUMBER / DURATION` where duration should be one of
+`second`, `minute`, `hour` or `day`.
 
 ## Usage
 
