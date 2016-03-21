@@ -16,25 +16,41 @@ Maxwell Faker is useful in staging environments, systems tests, or load tests.
 # Limitations
 
 * databases with multiple primary keys are not supported
+* producing is Kafka-only for now
+* currently slower than Maxwell
 
 # YAML Configuration Format
 
 Maxwell Faker is configured through a single YAML file. See [example.yaml](https://github.com/movio/maxwell-faker/blob/master/example.yaml) for a full example
 
-| Key                                                                               | Notes  |
-| --------------------------------------------------------------------------------- | ------ |
-| `generator.seed`                                                                  | seed for the pseudorandom generator |
-| `kafka.brokers`                                                                   | list of brokers in HOST:PORT format |
-| `kafka.topic`                                                                     | Kafka topic to produce messages to |
-| `mysql.schemas.<schema>.databases`                                           | list of databases for the specified schema |
-| `mysql.schemas.<schema>.tables.<table>.<db>.size` | number of rows to insert when bootstrapping |
+| Key                                                          | Notes  |
+| -------------------------------------------------------------| ------ |
+| `generator.seed`                                             | seed for the pseudorandom generator |
+| `kafka.brokers`                                              | list of brokers in HOST:PORT format |
+| `kafka.topic`                                                | Kafka topic to produce messages to |
+| `mysql.schemas.<schema>.databases`                           | list of databases for the specified schema |
+| `mysql.schemas.<schema>.tables.<table>.<db>.size`            | number of rows to insert when bootstrapping |
 | `mysql.schemas.<schema>.tables.<table>.<db>.insert-rate`     | insert rate of the specified table |
 | `mysql.schemas.<schema>.tables.<table>.<db>.update-rate`     | update rate of the specified table |
 | `mysql.schemas.<schema>.tables.<table>.<db>.delete-rate`     | delete rate of the specified table |
-| `mysql.schemas.<schema>.tables.<table>.template.<column>`          | column definition (see below) |
-
+| `mysql.schemas.<schema>.tables.<table>.template.<column>`    | column definition (see below) |
 
 # Column Definition Syntax
+
+The syntax for column definition is `TYPE{[OPTIONS]}{?}`.
+That is a type identifier, optionally followed by options between square brackets, optionally followed by a question mark to denote an nullable column.
+
+The supported types and options are as follows:
+
+| Type      | Options  | Notes |
+| --------- | -------- | ----- |
+| integer   | min, max | pseudorandom integer between min (incl.) and max (excl.) |
+| float     | min, max | pseudorandom float between min (incl.) and max (excl.) |
+| string    | min, max | pseudorandom string of length between min (incl.) and max (excl.) |
+| date      | (none) | Date in `YYYY-MM-DD` format |
+| date-time | (none) | Date-time in `YYYY-MM-DD hh:mm:ss` format |
+| enum      | value1, value2, ... | enumeration of the specified values |
+| foreign-key | database-name | will generate a valid, existing, foreign key |
 
 
 # Usage
