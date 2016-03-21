@@ -42,8 +42,8 @@ def main():
 
     kafka_producer = KafkaProducer(bootstrap_servers=config['kafka']['brokers'])
     try:
-        produce_func = generate_produce_func(config, kafka_producer)
-        produce_messages(produce_func, args, config)
+        f_consume = generate_kafka_producer_consumer(config, kafka_producer)
+        produce_messages(f_consume, args, config)
     except IOError, e:
         usage(e)
     except KeyboardInterrupt:
@@ -52,7 +52,7 @@ def main():
         sys.exit(1)
 
 
-def generate_produce_func(config, kafka_producer):
+def generate_kafka_producer_consumer(config, kafka_producer):
     topic = config['kafka']['topic']
     partition_count = 1 + max(kafka_producer.partitions_for(topic))
 
@@ -66,7 +66,7 @@ def generate_produce_func(config, kafka_producer):
     return produce
 
 
-def produce_messages(produce_func, args, config):
+def produce_messages(f_consume, args, config):
     seed = config['generator']['seed']
     producers = []
     timer = Timer()
@@ -75,7 +75,7 @@ def produce_messages(produce_func, args, config):
     for schema in config['mysql']['schemas']:
         for database in config['mysql']['schemas'][schema]['databases']:
             for table in config['mysql']['schemas'][schema]['tables']:
-                producers.extend(generate_producers_for_table(produce_func, seed, schema, database, table, config))
+                producers.extend(generate_producers_for_table(seed, schema, database, table, config))
 
     # Filter producer by arguments
     producers = filter(lambda x: args.schema is None or x.table.schema == args.schema, producers)
@@ -89,19 +89,23 @@ def produce_messages(produce_func, args, config):
     timer.start()
     while True:
         timer.tick()
-        message_generators = []
-
+        message_thunks = []
         for p in producers:
-            message_generators.extend(p.try_produce(timer.time_elapsed_ms))
+            message_thunks.extend(p.try_produce_thunks(timer.time_elapsed_ms))
 
-        message_generators.sort(key=lambda tp: tp[0])
-        for order_key, msg_gen in message_generators:
-            msg_gen()
+        # sort thunks by timestamp
+        message_thunks.sort(key=lambda tp: tp[0])
+
+        # generation message in time-order
+        for order_key, f_produce_one in message_thunks:
+            msg_key, msg_value = f_produce_one()
+            # apply consume function
+            f_consume(msg_key, msg_value)
 
         sleep(0.01)
 
 
-def generate_producers_for_table(produce_func, seed, schema, database, table_name, config):
+def generate_producers_for_table(seed, schema, database, table_name, config):
     operation_desc = config['mysql']['schemas'][schema]['tables'][table_name][database]
     max_id = int(float(operation_desc['size']))
     row_gen = RowGenerator.get_instance(schema, database, table_name, config)
@@ -110,17 +114,17 @@ def generate_producers_for_table(produce_func, seed, schema, database, table_nam
 
     if operation_desc['insert-rate'] is not None:
         insert_rate = parse_rate(operation_desc['insert-rate'])
-        insert_producer = MessageProducer(produce_func, table, insert_rate, "insert")
+        insert_producer = MessageProducer(table, insert_rate, "insert", 0)
         producers.append(insert_producer)
 
     if operation_desc['update-rate'] is not None:
         update_rate = parse_rate(operation_desc['update-rate'])
-        update_producer = MessageProducer(produce_func, table, update_rate, "update")
+        update_producer = MessageProducer(table, update_rate, "update", 1)
         producers.append(update_producer)
 
     if operation_desc['delete-rate'] is not None:
         delete_rate = parse_rate(operation_desc['delete-rate'])
-        delete_producer = MessageProducer(produce_func, table, delete_rate, "delete")
+        delete_producer = MessageProducer(table, delete_rate, "delete", 2)
         producers.append(delete_producer)
 
     return producers
@@ -167,26 +171,20 @@ class Table(object):
 
 
 class MessageProducer(object):
-    def __init__(self, produce_func, table, rate, operation):
-        self.produce_func = produce_func
+    def __init__(self, table, rate, operation, priority):
         self.table = table
         self.rate = rate
         self.operation = operation
+        # priority of operation
+        self.priority = priority
         self.produced_count = 0
 
-    def try_produce(self, time_elapsed):
+    def try_produce_thunks(self, time_elapsed):
         should_have_produced = int(self.rate * time_elapsed)
         num_to_produce = should_have_produced - self.produced_count
         for i in range(0, num_to_produce):
-
             timestamp = (self.produced_count + i + 1) / self.rate
-            if self.operation == 'insert':
-                priority = 0
-            elif self.operation == 'update':
-                priority = 1
-            else:
-                priority = 2
-            order_key = (timestamp, priority)
+            order_key = (timestamp, self.priority)
             yield order_key, self.produce_one
 
     def produce_one(self):
@@ -204,5 +202,4 @@ class MessageProducer(object):
         data = row_gen.generate_row(row_idx)
         pk_name = row_gen.primary_key_field
         pk_value = row_gen.generate_primary_key(row_idx)
-        self.produce_func(*maxwell_message(self.table.database, self.table.table_name, self.operation, data,
-                                           pk_name, pk_value))
+        return maxwell_message(self.table.database, self.table.table_name, self.operation, data, pk_name, pk_value)
