@@ -31,7 +31,7 @@ Maxwell Faker is configured through a single YAML file. See [example.yaml](https
 | `mysql.schemas.<schema>.tables.<table>.<db>.insert-rate`     | insert rate of the specified table |
 | `mysql.schemas.<schema>.tables.<table>.<db>.update-rate`     | update rate of the specified table |
 | `mysql.schemas.<schema>.tables.<table>.<db>.delete-rate`     | delete rate of the specified table |
-| `mysql.schemas.<schema>.tables.<table>.template.<column>`          | column definition for the specified column (see below) |
+| `mysql.schemas.<schema>.tables.<table>.template.<column>`          | column definition (see below) |
 
 
 # Column Definition Syntax
