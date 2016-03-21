@@ -89,8 +89,15 @@ def produce_messages(produce_func, args, config):
     timer.start()
     while True:
         timer.tick()
+        message_generators = []
+
         for p in producers:
-            p.try_produce(timer.time_elapsed_ms)
+            message_generators.extend(p.try_produce(timer.time_elapsed_ms))
+
+        message_generators.sort(key=lambda tp: tp[0])
+        for order_key, msg_gen in message_generators:
+            msg_gen()
+
         sleep(0.01)
 
 
@@ -171,7 +178,16 @@ class MessageProducer(object):
         should_have_produced = int(self.rate * time_elapsed)
         num_to_produce = should_have_produced - self.produced_count
         for i in range(0, num_to_produce):
-            self.produce_one()
+
+            timestamp = (self.produced_count + i + 1) / self.rate
+            if self.operation == 'insert':
+                priority = 0
+            elif self.operation == 'update':
+                priority = 1
+            else:
+                priority = 2
+            order_key = (timestamp, priority)
+            yield order_key, self.produce_one
 
     def produce_one(self):
         if self.operation == 'insert':
