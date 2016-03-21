@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import sys
 import json
 import yaml
 import argparse
@@ -38,18 +39,21 @@ def main():
     config = yaml.load(open(args.config).read())
     validate_config(config)
 
+    kafka_producer = KafkaProducer(bootstrap_servers=config['kafka']['brokers'])
     try:
-        produce_func = generate_produce_func(config)
+
+        produce_func = generate_produce_func(config, kafka_producer)
         produce_messages(produce_func, args, config)
     except IOError, e:
         usage(e)
     except KeyboardInterrupt:
-        pass
+        kafka_producer.flush()
+        kafka_producer.close()
+        sys.exit(1)
 
 
-def generate_produce_func(config):
+def generate_produce_func(config, kafka_producer):
     topic = config['kafka']['topic']
-    kafka_producer = KafkaProducer(bootstrap_servers=config['kafka']['brokers'])
     partition_count = 1 + max(kafka_producer.partitions_for(topic))
 
     def produce(key, value):
