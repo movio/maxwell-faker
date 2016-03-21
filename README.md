@@ -15,7 +15,7 @@ Maxwell Faker is useful in staging environments, systems tests, or load tests.
 
 ## Limitations
 
-* databases with multiple primary keys are not supported
+* tables with compound primary keys are not supported
 * producing is Kafka-only for now
 * currently slower than Maxwell
 * row updates are currently idempotent
@@ -55,7 +55,7 @@ The supported types and options are as follows:
 | date      | (none) | Date in `YYYY-MM-DD` format |
 | date-time | (none) | Date-time in `YYYY-MM-DD hh:mm:ss` format |
 | enum      | value1, value2, ... | enumeration of the specified values |
-| foreign-key | database-name | will generate a valid, existing, foreign key |
+| foreign-key | table-name | will generate a valid, existing, foreign key |
 
 All column definitions can be suffixed by a `?` to denote a nullable column.
 
