@@ -2,7 +2,7 @@ Maxwell Faker
 =============
 
 [Maxwell](https://github.com/zendesk/maxwell) is a really useful MySQL binlog to Kafka replicator built by [Zendesk](https://www.zendesk.com/).  
-**Maxwell Faker** generates deterministic pseudorandom data and writes it to Kafka, in the same JSON format at Maxwell.
+**Maxwell Faker** generates deterministic pseudorandom data and writes it to Kafka, in the same JSON format as Maxwell.
 Maxwell Faker is useful in staging environments, systems tests, or load tests.
 
 ## Features
@@ -18,6 +18,7 @@ Maxwell Faker is useful in staging environments, systems tests, or load tests.
 * databases with multiple primary keys are not supported
 * producing is Kafka-only for now
 * currently slower than Maxwell
+* row updates are currently idempotent
 
 ## Installation
 
