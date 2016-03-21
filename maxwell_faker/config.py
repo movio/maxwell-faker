@@ -132,8 +132,8 @@ def validate_mysql_table_section(config, path, schema, table):
 def validate_database_table_section(config, path, schema, table, database):
     section = config['mysql']['schemas'][schema]['tables'][table]
     check(
-        'section is missing "bootstrap-count"',
-        'bootstrap-count' in section[database],
+        'section is missing "size"',
+        'size' in section[database],
         path
     )
     check(

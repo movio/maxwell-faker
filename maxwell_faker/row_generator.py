@@ -60,7 +60,7 @@ class RowGenerator(object):
     def generate_foreign_key(self, row_index, field, field_options):
         foreign_table = field_options
         foreign_row_generator = RowGenerator.get_instance(self.schema, self.database, foreign_table, self.config)
-        foreign_table_bootstrap_count = int(float(self.config['mysql']['schemas'][self.schema]['tables'][foreign_table][self.database]['bootstrap-count']))
+        foreign_table_bootstrap_count = int(float(self.config['mysql']['schemas'][self.schema]['tables'][foreign_table][self.database]['size']))
         foreign_row_index = pseudorandom_long([self.specifier, field, row_index], foreign_table_bootstrap_count)
         return foreign_row_generator.generate_primary_key(foreign_row_index)
 

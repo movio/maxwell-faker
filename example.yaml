@@ -17,13 +17,13 @@ mysql:
       tables:
         customers:
           store_records_tycoon:
-            bootstrap-count: 10e6
+            size: 10e6
             insert-rate: 100 / second
             update-rate: 20 / second
             delete-rate: 20 / second
 
           store_records_initech:
-            bootstrap-count: 2e6
+            size: 2e6
             insert-rate: 20 / second
             update-rate: 4 / second
             delete-rate: 4 / second
@@ -39,13 +39,13 @@ mysql:
 
         orders:
           store_records_tycoon:
-            bootstrap-count: 50e3
+            size: 50e3
             insert-rate: 50 / second
             update-rate: 10 / second
             delete-rate: 10 / second
 
           store_records_initech:
-            bootstrap-count: 10e3
+            size: 10e3
             insert-rate: 10 / second
             update-rate: 2 / second
             delete-rate: 2 / second
@@ -58,12 +58,12 @@ mysql:
 
         items:
           store_records_tycoon:
-            bootstrap-count: 5
+            size: 5
             insert-rate: 10 / second
             update-rate: 5 / second
             delete-rate: 5 / second
           store_records_initech:
-            bootstrap-count: 5
+            size: 5
             insert-rate: 10 / second
             update-rate: 5 / second
             delete-rate: 5 / second

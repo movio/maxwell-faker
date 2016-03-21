@@ -82,7 +82,7 @@ def bootstrap(producer, schema, database, table, config):
     topic = config['kafka']['topic']
     start_time_millis = time() * 1000.0
     inserted_rows = 0
-    total_rows = int(float(config['mysql']['schemas'][schema]['tables'][table][database]['bootstrap-count']))
+    total_rows = int(float(config['mysql']['schemas'][schema]['tables'][table][database]['size']))
     partition_count = 1 + max(producer.partitions_for(topic))
     partition = abs(java_string_hashcode(database) % partition_count)
     produce(producer, topic, partition, *bootstrap_start_message(schema, database, table, config))
