@@ -32,6 +32,7 @@ def maxwell_message(database, table, operation, data, pk_name, pk_value):
 def main():
     parser = argparse.ArgumentParser(description='Fake Maxwell data into Kafka.')
     parser.add_argument('--config', metavar='CONFIG', type=str, required=True, help='path to yaml config file')
+    parser.add_argument('--schema', metavar='SCHEMA', type=str, required=True, help='schema to produce')
     parser.add_argument('--database', metavar='DATABASE', type=str, required=False, help='database to produce')
     parser.add_argument('--table', metavar='TABLE', type=str, required=False, help='table to produce')
     args = parser.parse_args()
@@ -79,6 +80,8 @@ def produce_messages(produce_func, args, config):
                                                               row_generator))
 
     # Filter producer by arguments
+    producers = filter(lambda x: args.schema is None or x.table.schema == args.schema, producers)
+    if len(producers) == 0: usage('could not find specified schema')
     producers = filter(lambda x: args.database is None or x.table.database == args.database, producers)
     if len(producers) == 0: usage('could not find specified database')
     producers = filter(lambda x: args.table is None or x.table.table_name == args.table, producers)
@@ -93,7 +96,7 @@ def produce_messages(produce_func, args, config):
 
 def generate_producers_for_table(produce_func, seed, schema, database, table_name, config, row_gen):
     operation_desc = config['mysql']['schemas'][schema]['tables'][table_name][database]
-    max_id = int(float(operation_desc['size']))
+    max_id = int(float(operation_desc['bootstrap-count']))
     table = Table(max_id, schema, database, table_name, seed, row_gen)
     producers = []
 
