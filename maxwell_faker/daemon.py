@@ -94,18 +94,27 @@ def produce_messages(f_consume, args, config):
     while True:
         time_elapsed = time() * 1000.0 - start_time
 
-        # generate thunks with timestamp, then sort by timestamp, to ensure the output order
-        message_thunks = []
-        for p in producers:
-            message_thunks.extend(p.try_produce_thunks(time_elapsed))
-        message_thunks.sort()
+        # generate the list of (message timestamp, producer) pairs, then sort by timestamp, to ensure the output order
+        ts_producer_pairs = flatmap(lambda p: zip_with(p.msg_timings(time_elapsed), p), producers)
+        ts_producer_pairs.sort()
 
         # generation message in time-order, evaluate thunks to get message and apply the consume function
-        for order_key, f_produce_one in message_thunks:
-            msg_key, msg_value = f_produce_one()
+        for _, producer in ts_producer_pairs:
+            msg_key, msg_value = producer.produce_one()
             f_consume(msg_key, msg_value)
 
         sleep(0.01)
+
+
+def flatmap(f, xs):
+    result = []
+    for x in xs:
+        result.extend(f(x))
+    return result
+
+
+def zip_with(xs, y):
+    return [(x, y) for x in xs]
 
 
 def generate_producers_for_table(seed, schema, database, table_name, config):
@@ -170,13 +179,15 @@ class MessageProducer(object):
         self.priority = priority
         self.produced_count = 0
 
-    def try_produce_thunks(self, time_elapsed):
+    def __lt__(self, other):
+        return self.priority < other.priority
+
+    def msg_timings(self, time_elapsed):
         should_have_produced = int(self.rate * time_elapsed)
         num_to_produce = should_have_produced - self.produced_count
         for i in range(0, num_to_produce):
             timestamp = (self.produced_count + i + 1) / self.rate
-            order_key = (timestamp, self.priority)
-            yield order_key, self.produce_one
+            yield timestamp
 
     def produce_one(self):
         if self.operation == 'insert':
@@ -194,3 +205,5 @@ class MessageProducer(object):
         pk_name = row_gen.primary_key_field
         pk_value = row_gen.generate_primary_key(row_idx)
         return maxwell_message(self.table.database, self.table.table_name, self.operation, data, pk_name, pk_value)
+
+

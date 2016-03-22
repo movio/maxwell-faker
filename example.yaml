@@ -18,15 +18,15 @@ mysql:
         customers:
           store_records_tycoon:
             size: 10e6
-            insert-rate: 10000 / second
-            update-rate: 10000 / second
-            delete-rate: 10000 / second
+            insert-rate: 100 / second
+            update-rate: 20 / second
+            delete-rate: 20 / second
 
           store_records_initech:
             size: 2e6
-            insert-rate: 10000 / second
-            update-rate: 10000 / second
-            delete-rate: 10000 / second
+            insert-rate: 20 / second
+            update-rate: 4 / second
+            delete-rate: 4 / second
 
           template:
              id: integer[primary-key]
