@@ -93,16 +93,12 @@ def produce_messages(f_consume, args, config):
     start_time = time() * 1000.0
     while True:
         time_elapsed = time() * 1000.0 - start_time
-
-        # generate the list of (message timestamp, producer) pairs, then sort by timestamp, to ensure the output order
+        # generate the list of (message timestamp, producer) pairs, sort to ensure the output order
         ts_producer_pairs = flatmap(lambda p: zip_with(p.msg_timings(time_elapsed), p), producers)
         ts_producer_pairs.sort()
 
-        # generation message in time-order, evaluate thunks to get message and apply the consume function
         for _, producer in ts_producer_pairs:
-            msg_key, msg_value = producer.produce_one()
-            f_consume(msg_key, msg_value)
-
+            f_consume(*producer.produce_one())
         sleep(0.01)
 
 
