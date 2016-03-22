@@ -12,6 +12,7 @@ from row_generator import RowGenerator
 from kafka import KafkaProducer
 
 UPDATE_PERIOD_MILLIS = 250
+DISPLAY_PROGRESS_PERIOD_MILLIS = 250
 DISPLAY_PROGRESS_WARMUP_MILLIS = 5000
 
 def display_line(line):
@@ -86,10 +87,13 @@ def bootstrap(producer, schema, database, table, config):
     partition_count = 1 + max(producer.partitions_for(topic))
     partition = abs(java_string_hashcode(database) % partition_count)
     produce(producer, topic, partition, *bootstrap_start_message(schema, database, table, config))
+    last_display_progress = time()
     for key, value in bootstrap_insert_messages(schema, database, table, config, total_rows):
         produce(producer, topic, partition, key, value)
         inserted_rows += 1
-        display_progress(total_rows, inserted_rows, start_time_millis)
+        if time() - last_display_progress > (DISPLAY_PROGRESS_PERIOD_MILLIS / 1000.0):
+            display_progress(total_rows, inserted_rows, start_time_millis)
+            last_display_progress = time()
     produce(producer, topic, partition, *bootstrap_complete_message(schema, database, table, config))
     display_line("")
 
@@ -121,7 +125,7 @@ def main():
     config = yaml.load(open(args.config).read())
     validate_config(config)
     schema = find_schema(config, args.database, args.table)
-    producer = KafkaProducer(bootstrap_servers = config['kafka']['brokers'])
+    producer = KafkaProducer(bootstrap_servers = config['kafka']['brokers'], buffer_memory = 335544320)
     try:
         bootstrap(producer, schema, args.database, args.table, config)
     except KeyboardInterrupt:
