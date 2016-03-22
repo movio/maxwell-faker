@@ -8,3 +8,6 @@ def bootstrap_main():
     from bootstrap import main
     main()
 
+def gen_main():
+    from gen import main
+    main()

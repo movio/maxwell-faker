@@ -36,16 +36,16 @@ def main():
     parser.add_argument('--database', metavar='DATABASE', type=str, required=False, help='database to produce')
     parser.add_argument('--table', metavar='TABLE', type=str, required=False, help='table to produce')
     parser.add_argument('-c', action='store_true', required=False, help='produce message to console')
+    parser.add_argument('--partition-count', metavar='PARTITION_COUNT', type=int, default=12, required=False,
+                        help='number of partitions (default 12, only take effect when -c specified)')
     args = parser.parse_args()
 
     config = yaml.load(open(args.config).read())
     validate_config(config)
 
     try:
-        f_consume = generate_console_consumer() if args.c else generate_kafka_producer_consumer(config)
+        f_consume = generate_console_consumer(args) if args.c else generate_kafka_producer_consumer(config)
         produce_messages(f_consume, args, config)
-    except IOError, e:
-        usage(e)
     except KeyboardInterrupt:
         sys.exit(1)
 
@@ -65,9 +65,18 @@ def generate_kafka_producer_consumer(config):
     return consume
 
 
-def generate_console_consumer():
+def generate_console_consumer(args):
+    partition_count = args.partition_count
+
     def consume(key, value):
-        print json.dumps(key), json.dumps(value)
+        partition = abs(java_string_hashcode(key['database']) % partition_count)
+        output = {
+            "partition": partition,
+            "key": key,
+            "message": value
+        }
+        print json.dumps(output)
+
     return consume
 
 

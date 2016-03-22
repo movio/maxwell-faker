@@ -30,6 +30,7 @@ setup(
         'console_scripts': [
             'maxwell-faker=maxwell_faker:daemon_main',
             'maxwell-faker-bootstrap=maxwell_faker:bootstrap_main',
+            'maxwell-faker-gen=maxwell_faker:gen_main',
         ],
     },
 )

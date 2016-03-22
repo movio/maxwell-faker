@@ -2,6 +2,7 @@
 
 import re
 import sys
+from utils import usage
 
 KAFKA_BROKER_CONNECTION_RE = re.compile('^.+:\d+$')
 FIELD_SPECIFICATION_RE = re.compile('^([^\[\?]+)(\[.*\])?(\?)?$')
