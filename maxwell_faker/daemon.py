@@ -90,15 +90,14 @@ def produce_messages(f_consume, args, config):
     if len(producers) == 0: usage('could not find specified table')
 
     # Check lag and try produce every 10 ms
-    timer = Timer()
-    timer.start()
+    start_time = time() * 1000.0
     while True:
-        timer.tick()
+        time_elapsed = time() * 1000.0 - start_time
+
+        # generate thunks with timestamp, then sort by timestamp, to ensure the output order
         message_thunks = []
         for p in producers:
-            message_thunks.extend(p.try_produce_thunks(timer.time_elapsed_ms))
-
-        # sort thunks by timestamp, to ensure the output order
+            message_thunks.extend(p.try_produce_thunks(time_elapsed))
         message_thunks.sort()
 
         # generation message in time-order, evaluate thunks to get message and apply the consume function
@@ -150,18 +149,6 @@ def parse_rate(rate_srt):
     else:
         raise Exception('invalid duration')
     return rate
-
-
-class Timer(object):
-    def __init__(self):
-        self.start_time_ms = 0
-        self.time_elapsed_ms = 0
-
-    def start(self):
-        self.start_time_ms = time() * 1000.0
-
-    def tick(self):
-        self.time_elapsed_ms = time() * 1000.0 - self.start_time_ms
 
 
 class Table(object):
