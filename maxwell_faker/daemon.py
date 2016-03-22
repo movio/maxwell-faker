@@ -67,7 +67,7 @@ def generate_kafka_producer_consumer(config):
 
 def generate_console_consumer():
     def consume(key, value):
-        print key, value
+        print json.dumps(key), json.dumps(value)
     return consume
 
 

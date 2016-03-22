@@ -76,5 +76,5 @@ Use `maxwell-faker` to continuously generate pseudorandom data.
 
  By default, `maxwell-faker` will produce data for all schema, all databases, and all tables.
  Use the `--schema`, `--database`, or `--table` flags to optionally filter the output.
- Use the `-c` flag to output to console
+ Use the `-c` flag to output to console only
 
