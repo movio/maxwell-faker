@@ -24,7 +24,8 @@ setup(
     packages=find_packages(exclude=['tests']),
     install_requires=[
         'PyYAML',
-        'kafka-python'
+        'pykafka==2.3.0',
+        'psyco'
     ],
     entry_points={
         'console_scripts': [

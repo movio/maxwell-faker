@@ -9,7 +9,7 @@ from time import time
 from config import validate_config
 from utils import usage, java_string_hashcode
 from row_generator import RowGenerator
-from kafka import KafkaProducer
+from pykafka import KafkaClient
 
 UPDATE_PERIOD_MILLIS = 250
 DISPLAY_PROGRESS_PERIOD_MILLIS = 250
@@ -48,7 +48,8 @@ def pretty_duration(millis, elapsedMillis):
         return ""
 
 def produce(producer, topic, partition, key, value):
-    producer.send(topic, key = key, value = value, partition = partition)
+    # producer.send(topic, key = key, value = value, partition = partition)
+    producer.produce(value, partition_key=key)
 
 def maxwell_message(database, table, type, data, pk_name, pk_value):
     key = json.dumps({
@@ -80,11 +81,11 @@ def bootstrap_complete_message(schema, database, table, config):
     return maxwell_message(database, table, "bootstrap-complete", data, pk_name, pk_value)
 
 def bootstrap(producer, schema, database, table, config):
-    topic = config['kafka']['topic']
+    topic = None # FIXME
     start_time_millis = time() * 1000.0
     inserted_rows = 0
     total_rows = int(float(config['mysql']['schemas'][schema]['tables'][table][database]['size']))
-    partition_count = 1 + max(producer.partitions_for(topic))
+    partition_count = 1 # FIXME
     partition = abs(java_string_hashcode(database) % partition_count)
     produce(producer, topic, partition, *bootstrap_start_message(schema, database, table, config))
     last_display_progress = time()
@@ -125,10 +126,15 @@ def main():
     config = yaml.load(open(args.config).read())
     validate_config(config)
     schema = find_schema(config, args.database, args.table)
-    producer = KafkaProducer(bootstrap_servers = config['kafka']['brokers'], buffer_memory = 335544320)
+    # producer = KafkaProducer(bootstrap_servers = config['kafka']['brokers'], buffer_memory = 335544320)
+    client = KafkaClient(hosts=",".join(config['kafka']['brokers']))
     try:
-        bootstrap(producer, schema, args.database, args.table, config)
+        topic = client.topics[config['kafka']['topic']]
+        with topic.get_producer(linger_ms=300, min_queued_messages=20000, max_queued_messages=20000) as producer:
+            print "bootstrapping..."
+            bootstrap(producer, schema, args.database, args.table, config)
+            print "bootstrapping done"
+            producer.stop()
+            print "producer stopped"
     except KeyboardInterrupt:
         sys.exit(1)
-    producer.flush()
-    producer.close()

@@ -3,9 +3,7 @@ generator:
 
 kafka:
   brokers:
-    - kafka1.example.com:9092
-    - kafka2.example.com:9092
-    - kafka3.example.com:9092
+    - localhost:9092
   topic: maxwell-fake
 
 mysql:
@@ -17,7 +15,7 @@ mysql:
       tables:
         customers:
           store_records_tycoon:
-            size: 10e6
+            size: 100000
             insert-rate: 100 / second
             update-rate: 20 / second
             delete-rate: 20 / second
