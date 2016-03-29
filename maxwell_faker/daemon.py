@@ -57,8 +57,8 @@ def generate_kafka_producer_consumer(config):
 
     def consume(key, value):
         database = key['database']
-        key_str = json.dumps(key)
-        value_str = json.dumps(value)
+        key_str = json.dumps(key, separators=(',',':'))
+        value_str = json.dumps(value, separators=(',',':'))
         partition = abs(java_string_hashcode(database) % partition_count)
         kafka_producer.send(topic, key=key_str, value=value_str, partition=partition)
 
@@ -75,7 +75,7 @@ def generate_console_consumer(args):
             "key": key,
             "message": value
         }
-        print json.dumps(output)
+        print json.dumps(output, separators=(',',':'))
 
     return consume
 

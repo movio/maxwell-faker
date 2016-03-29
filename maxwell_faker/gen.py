@@ -53,7 +53,7 @@ def generate_console_consumer(args):
             "key": key,
             "message": value
         }
-        print json.dumps(output)
+        print json.dumps(output, separators=(',',':'))
 
     return consume
 

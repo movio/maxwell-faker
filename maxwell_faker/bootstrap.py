@@ -55,14 +55,14 @@ def maxwell_message(database, table, type, data, pk_name, pk_value):
         "database": database,
         "table": table,
         "pk." + pk_name: pk_value
-    })
+    }, separators=(',',':'))
     value = json.dumps({
         "database": database,
         "table": table,
         "type": type,
         "ts": int(time()),
         "data": data
-    })
+    }, separators=(',',':'))
     return key, value
 
 def bootstrap_start_message(schema, database, table, config):
@@ -125,7 +125,7 @@ def main():
     config = yaml.load(open(args.config).read())
     validate_config(config)
     schema = find_schema(config, args.database, args.table)
-    producer = KafkaProducer(bootstrap_servers = config['kafka']['brokers'], buffer_memory = 335544320)
+    producer = KafkaProducer(bootstrap_servers = config['kafka']['brokers'])
     try:
         bootstrap(producer, schema, args.database, args.table, config)
     except KeyboardInterrupt:
