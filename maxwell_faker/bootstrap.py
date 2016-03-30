@@ -18,8 +18,8 @@ DISPLAY_PROGRESS_WARMUP_MILLIS = 5000
 def display_line(line):
     ansiClearLine = "\033[K"
     ansiMoveCursorToColumnZero = "\033[0G"
-    sys.stdout.write(ansiClearLine + ansiMoveCursorToColumnZero + line)
-    sys.stdout.flush()
+    sys.stderr.write(ansiClearLine + ansiMoveCursorToColumnZero + line)
+    sys.stderr.flush()
 
 def display_progress(total, count, started_time_millis):
     current_time_millis = time() * 1000.0
