@@ -170,12 +170,23 @@ def produce_to_bruce(schema, args, config):
 
     socket = bruce.open_bruce_socket()
 
+    # batching socket send
+    buff = []
+
+    def flush_buff():
+        for msg in buff:
+            socket.sendto(msg, '/var/run/bruce/bruce.socket')
+        del buff[:]
+
     def f_produce(topic, partition, key, value):
-        msg = bruce.create_msg(partition, topic, bytes(key), bytes(value))
-        socket.sendto(msg, '/var/run/bruce/bruce.socket')
+        if len(buff) < 1000:
+            buff.append(bruce.create_msg(partition, topic, bytes(key), bytes(value)))
+        else:
+            flush_buff()
 
     try:
         bootstrap(f_produce, partition_count, schema, args.database, args.table, config)
+        flush_buff()
     except KeyboardInterrupt:
         sys.exit(1)
     finally:
