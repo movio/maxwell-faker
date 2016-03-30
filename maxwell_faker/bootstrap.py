@@ -4,6 +4,7 @@ import sys
 import json
 import yaml
 import argparse
+import bruce
 from time import time
 
 from config import validate_config
@@ -47,8 +48,8 @@ def pretty_duration(millis, elapsedMillis):
     else:
         return ""
 
-def produce(producer, topic, partition, key, value):
-    producer.send(topic, key = key, value = value, partition = partition)
+def produce(f_produce, topic, partition, key, value):
+    f_produce(topic, key = key, value = value, partition = partition)
 
 def maxwell_message(database, table, type, data, pk_name, pk_value):
     key = json.dumps({
@@ -79,22 +80,22 @@ def bootstrap_complete_message(schema, database, table, config):
     pk_value = None
     return maxwell_message(database, table, "bootstrap-complete", data, pk_name, pk_value)
 
-def bootstrap(producer, schema, database, table, config):
+def bootstrap(f_produce, partition_count, schema, database, table, config):
     topic = config['kafka']['topic']
     start_time_millis = time() * 1000.0
     inserted_rows = 0
     total_rows = int(float(config['mysql']['schemas'][schema]['tables'][table][database]['size']))
-    partition_count = 1 + max(producer.partitions_for(topic))
+
     partition = abs(java_string_hashcode(database) % partition_count)
-    produce(producer, topic, partition, *bootstrap_start_message(schema, database, table, config))
+    produce(f_produce, topic, partition, *bootstrap_start_message(schema, database, table, config))
     last_display_progress = time()
     for key, value in bootstrap_insert_messages(schema, database, table, config, total_rows):
-        produce(producer, topic, partition, key, value)
+        produce(f_produce, topic, partition, key, value)
         inserted_rows += 1
         if time() - last_display_progress > (DISPLAY_PROGRESS_PERIOD_MILLIS / 1000.0):
             display_progress(total_rows, inserted_rows, start_time_millis)
             last_display_progress = time()
-    produce(producer, topic, partition, *bootstrap_complete_message(schema, database, table, config))
+    produce(f_produce, topic, partition, *bootstrap_complete_message(schema, database, table, config))
     display_line("")
 
 def bootstrap_insert_messages(schema, database, table, config, rows_total):
@@ -121,14 +122,79 @@ def main():
     parser.add_argument('--config', metavar='CONFIG', type=str, required=True, help='path to yaml config file')
     parser.add_argument('--database', metavar='DATABASE', type=str, required=True, help='database to bootstrap')
     parser.add_argument('--table', metavar='TABLE', type=str, required=True, help='table to bootstrap')
+    parser.add_argument('--target', metavar='TARGET', type=str, required=True,
+                        help='target system that messages will be output to')
+    parser.add_argument('--partition-count', metavar='PARTITION_COUNT', type=int, required=False,
+                        help='number of partitions (will read from kafka topic if not specified)')
     args = parser.parse_args()
     config = yaml.load(open(args.config).read())
     validate_config(config)
     schema = find_schema(config, args.database, args.table)
+
+    if args.target == 'console':
+        produce_to_console(schema, args, config)
+    elif args.target == 'kafka':
+        produce_to_kafka(schema, args, config)
+    elif args.target == 'bruce':
+        produce_to_bruce(schema, args, config)
+    else:
+        raise Exception('invalid target')
+
+
+def produce_to_kafka(schema, args, config):
+    topic = config['kafka']['topic']
     producer = KafkaProducer(bootstrap_servers = config['kafka']['brokers'])
+
+    def f_produce(topic, partition, key, value):
+        producer.send(topic, key = key, value = value, partition = partition)
+
+    partition_count = 1 + max(producer.partitions_for(topic))
     try:
-        bootstrap(producer, schema, args.database, args.table, config)
+        bootstrap(f_produce, partition_count, schema, args.database, args.table, config)
     except KeyboardInterrupt:
         sys.exit(1)
     producer.flush()
     producer.close()
+
+
+def produce_to_bruce(schema, args, config):
+    topic = config['kafka']['topic']
+
+    if args.partition_count:
+        partition_count = args.partition_count
+    else:
+        print 'fetch partition info for topic ' + topic
+        producer = KafkaProducer(bootstrap_servers = config['kafka']['brokers'])
+        partition_count = 1 + max(producer.partitions_for(topic))
+        producer.close()
+
+    socket = bruce.open_bruce_socket()
+
+    def f_produce(topic, partition, key, value):
+        msg = bruce.create_msg(partition, topic, bytes(key), bytes(value))
+        socket.sendto(msg, '/var/run/bruce/bruce.socket')
+
+    try:
+        bootstrap(f_produce, partition_count, schema, args.database, args.table, config)
+    except KeyboardInterrupt:
+        sys.exit(1)
+    finally:
+        socket.close()
+
+
+def produce_to_console(schema, args, config):
+    if not args.partition_count:
+        usage('partition-count parameter is required when output to console')
+
+    def f_produce(topic, partition, key, value):
+        print json.dumps({
+            "partition": partition,
+            "key": key,
+            "message": value
+        }, separators=(',',':'))
+
+    try:
+        bootstrap(f_produce, args.partition_count, schema, args.database, args.table, config)
+    except KeyboardInterrupt:
+        sys.exit(1)
+
