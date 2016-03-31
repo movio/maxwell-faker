@@ -90,11 +90,20 @@ Use `maxwell-faker-gen` to generate one pseudorandom row by message ID.
 
 ## Docker
 
-Run the docker container for bootstrap
-```
+Run the docker container for bootstrapping, could work with Bruce or Kafka
+
+```sh
+# Bootstrap using Bruce
 docker run -ti --rm \
   -v <host path to config.yaml>:/tmp/config.yml \
-  -v <bruce socket directory on the host>:/var/run/bruce <image-name> \
+  -v <Bruce socket directory on the host>:/var/run/bruce <image-name> \
   maxwell-faker-bootstrap --config /tmp/config.yaml --target bruce \
+  --database <database> --table <table> \
+  [--partition-count 12]
+
+# Bootstrap using Kafka
+docker run -ti --rm \
+  -v <host path to config.yaml>:/tmp/config.yml \
+  maxwell-faker-bootstrap --config /tmp/config.yaml --target kafka \
   --database <database> --table <table>
 ```
