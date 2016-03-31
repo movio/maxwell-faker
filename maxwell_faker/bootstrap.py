@@ -194,8 +194,10 @@ def produce_to_bruce(schema, args, config):
 
 
 def produce_to_console(schema, args, config):
-    if not args.partition_count:
-        usage('partition-count parameter is required when output to console')
+    # 12 by default
+    partition_count = 12
+    if args.partition_count:
+        partition_count = args.partition_count
 
     def f_produce(topic, partition, key, value):
         print json.dumps({
@@ -205,7 +207,7 @@ def produce_to_console(schema, args, config):
         }, separators=(',',':'))
 
     try:
-        bootstrap(f_produce, args.partition_count, schema, args.database, args.table, config)
+        bootstrap(f_produce, partition_count, schema, args.database, args.table, config)
     except KeyboardInterrupt:
         sys.exit(1)
 

@@ -19,6 +19,7 @@ Maxwell Faker is useful in staging environments, systems tests, or load tests.
 * producing is Kafka-only for now
 * currently slower than Maxwell
 * row updates are currently idempotent
+* the existence of optional fields is not random enough
 
 ## Installation
 
@@ -68,7 +69,10 @@ The syntax for insert, update and delete rates is `NUMBER / DURATION` where dura
 
 Use `maxwell-faker-bootstrap` to bootstrap a table:
 
-`$ maxwell-faker-bootstrap --config example.yaml --database store_records_initech --table customers`
+`$ maxwell-faker-bootstrap --config example.yaml --database store_records_initech --table customers --target`
+
+ target is the target system that messages will be output to. target could either be `bruce`, `kafka` or `console`.
+ when output to `console`, an optional `--partition-count` argument is set to `12` by default
 
 Use `maxwell-faker` to continuously generate pseudorandom data.
 
@@ -77,4 +81,7 @@ Use `maxwell-faker` to continuously generate pseudorandom data.
  By default, `maxwell-faker` will produce data for all schema, all databases, and all tables.
  Use the `--schema`, `--database`, or `--table` flags to optionally filter the output.
  Use the `-c` flag to output to console only
+
+Use `maxwell-faker-gen` to generate one pseudorandom row by message ID.
+`$ maxwell-faker-gen --config example.yaml --schema store-records --database store_records_tycoon --table orders --id 50001`
 
