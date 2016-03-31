@@ -85,6 +85,7 @@ Use `maxwell-faker` to continuously generate pseudorandom data.
  Use the `-c` flag to output to console only
 
 Use `maxwell-faker-gen` to generate one pseudorandom row by message ID.
+
 `$ maxwell-faker-gen --config example.yaml --schema store-records --database store_records_tycoon --table orders --id 50001`
 
 ## Docker
