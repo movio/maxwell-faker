@@ -1,4 +1,4 @@
-FROM pypy:2
+FROM pypy:2-slim
 
 COPY . /maxwell-faker
 
