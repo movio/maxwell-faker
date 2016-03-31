@@ -3,8 +3,6 @@ import socket
 import struct
 import time
 
-BRUCE_PATH = '/var/run/bruce/bruce.socket'
-
 MSG_SIZE_FIELD_SIZE = 4
 API_KEY_FIELD_SIZE = 2
 API_VERSION_FIELD_SIZE = 2
@@ -52,11 +50,7 @@ def create_msg(partition, topic, key_bytes, value_bytes):
     return result_bytes
 
 
-# Create socket for sending to Bruce.
 def open_bruce_socket():
     return socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
 
 
-def to_bruce(bruce_sock, bruce_path, topic, key, value, partition):
-    partition_key_msg = create_msg(partition, topic, bytes(key), bytes(value))
-    bruce_sock.sendto(partition_key_msg, bruce_path)

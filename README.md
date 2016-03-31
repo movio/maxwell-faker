@@ -91,6 +91,6 @@ Use `maxwell-faker-gen` to generate one pseudorandom row by message ID.
 
 Run the docker container for bootstrap
 ```
-docker run -ti --rm -v /host/path/to/config.yml:/tmp/config.yml -v /tmp/bruce:/var/run/bruce <image-name> \
+docker run -ti --rm -v /host/path/to/config.yml:/tmp/config.yml -v <bruce socket location on the host>:/var/run/bruce <image-name> \
 maxwell-faker-bootstrap --config /tmp/config.yml --target bruce --database <schema> --table <table>
 ```
