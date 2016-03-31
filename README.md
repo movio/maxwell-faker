@@ -71,8 +71,10 @@ Use `maxwell-faker-bootstrap` to bootstrap a table:
 
 `$ maxwell-faker-bootstrap --config example.yaml --database store_records_initech --table customers --target`
 
- target is the target system that messages will be output to. target could either be `bruce`, `kafka` or `console`.
- when output to `console`, an optional `--partition-count` argument is set to `12` by default
+ `target` is the target system that messages will be output to. `target` argument could either be `bruce`, `kafka` or `console`.
+ - `console` message will be output to console, with an optional `--partition-count` argument set to `12` by default
+ - `bruce` message will be output to bruce, partition count will be retrieve from kafka topic specified in config yaml file
+ - `kafka` messages will be output to kafka using kafka client directly
 
 Use `maxwell-faker` to continuously generate pseudorandom data.
 
@@ -85,3 +87,10 @@ Use `maxwell-faker` to continuously generate pseudorandom data.
 Use `maxwell-faker-gen` to generate one pseudorandom row by message ID.
 `$ maxwell-faker-gen --config example.yaml --schema store-records --database store_records_tycoon --table orders --id 50001`
 
+## Docker
+
+Run the docker container for bootstrap
+```
+docker run -ti --rm -v /host/path/to/config.yml:/tmp/config.yml -v /tmp/bruce:/var/run/bruce <image-name> \
+maxwell-faker-bootstrap --config /tmp/config.yml --target bruce --database <schema> --table <table>
+```
