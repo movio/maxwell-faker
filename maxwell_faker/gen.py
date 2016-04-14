@@ -63,6 +63,7 @@ def resolve_ref(f_consume, args, config):
     database = args.database
 
     def resolve(table, row_id):
+        row_id = int(row_id)
         row_gen = RowGenerator.get_instance(schema, database, table, config)
         row_idx = row_id - 1
         data = row_gen.generate_row(row_idx)
@@ -77,4 +78,4 @@ def resolve_ref(f_consume, args, config):
             if foreign_id is not None:
                 resolve(foreign_table, foreign_id)
 
-    resolve(args.table, int(args.id))
+    resolve(args.table, args.id)
