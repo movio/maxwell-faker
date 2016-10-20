@@ -16,13 +16,13 @@ from kafka import KafkaProducer
 def maxwell_message(topic, database, table, operation, data, pk_name, pk_value):
     key = {
         "database": database,
-        "table": table.lower(),
+        "table": table,
         "pk." + pk_name: pk_value
     }
 
     value = {
         "database": database,
-        "table": table.lower(),
+        "table": table,
         "type": operation,
         "ts": int(time()),
         "data": data

@@ -12,13 +12,13 @@ from row_generator import RowGenerator
 def maxwell_message(database, table, operation, data, pk_name, pk_value):
     key = {
         "database": database,
-        "table": table.lower(),
+        "table": table,
         "pk." + pk_name: pk_value
     }
 
     value = {
         "database": database,
-        "table": table.lower(),
+        "table": table,
         "type": operation,
         "ts": 0,
         "data": data

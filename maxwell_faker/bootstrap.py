@@ -59,12 +59,12 @@ def produce(f_produce, partition, topic, key, value):
 def maxwell_message(topic, database, table, type, data, pk_name, pk_value):
     key = json.dumps({
         "database": database,
-        "table": table.lower(),
+        "table": table,
         "pk." + pk_name: pk_value
     }, separators=(',',':'))
     value = json.dumps({
         "database": database,
-        "table": table.lower(),
+        "table": table,
         "type": type,
         "ts": int(time()),
         "data": data
