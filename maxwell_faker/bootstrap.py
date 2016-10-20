@@ -16,11 +16,13 @@ UPDATE_PERIOD_MILLIS = 250
 DISPLAY_PROGRESS_PERIOD_MILLIS = 250
 DISPLAY_PROGRESS_WARMUP_MILLIS = 5000
 
+
 def display_line(line):
     ansiClearLine = "\033[K"
     ansiMoveCursorToColumnZero = "\033[0G"
     sys.stderr.write(ansiClearLine + ansiMoveCursorToColumnZero + line)
     sys.stderr.flush()
+
 
 def display_progress(total, count, started_time_millis):
     current_time_millis = time() * 1000.0
@@ -29,6 +31,7 @@ def display_progress(total, count, started_time_millis):
     remaining_millis = predicted_total_millis - elapsed_millis
     duration = pretty_duration(remaining_millis, elapsed_millis)
     display_line("%d / %d (%.2f%%) %s" % (count, total, ( count * 100.0 ) / total, duration))
+
 
 def pretty_duration(millis, elapsedMillis):
     if elapsedMillis < DISPLAY_PROGRESS_WARMUP_MILLIS:
@@ -48,8 +51,10 @@ def pretty_duration(millis, elapsedMillis):
     else:
         return ""
 
+
 def produce(f_produce, topic, partition, key, value):
     f_produce(topic, key = key, value = value, partition = partition)
+
 
 def maxwell_message(database, table, type, data, pk_name, pk_value):
     key = json.dumps({
@@ -66,6 +71,7 @@ def maxwell_message(database, table, type, data, pk_name, pk_value):
     }, separators=(',',':'))
     return key, value
 
+
 def bootstrap_start_message(schema, database, table, config):
     row_generator = RowGenerator.get_instance(schema, database, table, config)
     data = {}
@@ -73,12 +79,14 @@ def bootstrap_start_message(schema, database, table, config):
     pk_value = None
     return maxwell_message(database, table, "bootstrap-start", data, pk_name, pk_value)
 
+
 def bootstrap_complete_message(schema, database, table, config):
     row_generator = RowGenerator.get_instance(schema, database, table, config)
     data = {}
     pk_name = row_generator.primary_key_field
     pk_value = None
     return maxwell_message(database, table, "bootstrap-complete", data, pk_name, pk_value)
+
 
 def bootstrap(f_produce, partition_count, schema, database, table, config):
     topic = config['kafka']['topic']
@@ -98,6 +106,7 @@ def bootstrap(f_produce, partition_count, schema, database, table, config):
     produce(f_produce, topic, partition, *bootstrap_complete_message(schema, database, table, config))
     display_line("")
 
+
 def bootstrap_insert_messages(schema, database, table, config, rows_total):
     row_generator = RowGenerator.get_instance(schema, database, table, config)
     for row_index in xrange(rows_total):
@@ -105,6 +114,7 @@ def bootstrap_insert_messages(schema, database, table, config, rows_total):
         pk_name = row_generator.primary_key_field
         pk_value = row_generator.generate_primary_key(row_index)
         yield maxwell_message(database, table, "bootstrap-insert", data, pk_name, pk_value)
+
 
 def find_schema(config, database, table):
     found_schema = None
@@ -116,6 +126,7 @@ def find_schema(config, database, table):
             found_schema = schema
     if not found_schema: usage('could not find schema with specified database and table')
     return found_schema
+
 
 def main():
     parser = argparse.ArgumentParser(description='Maxwell faker for systems and load testing.')

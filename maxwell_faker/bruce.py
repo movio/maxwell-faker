@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import io
 import socket
 import struct
@@ -52,5 +54,3 @@ def create_msg(partition, topic, key_bytes, value_bytes):
 
 def open_bruce_socket():
     return socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM)
-
-

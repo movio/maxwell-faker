@@ -8,6 +8,7 @@ from datetime import datetime
 from utils import usage, pseudorandom_float, pseudorandom_long, pseudorandom_string
 from config import Field
 
+
 class RowGenerator(object):
 
     @staticmethod
