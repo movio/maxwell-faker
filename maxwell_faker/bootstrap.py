@@ -52,11 +52,11 @@ def pretty_duration(millis, elapsedMillis):
         return ""
 
 
-def produce(f_produce, topic, partition, key, value):
+def produce(f_produce, partition, topic, key, value):
     f_produce(topic, key = key, value = value, partition = partition)
 
 
-def maxwell_message(database, table, type, data, pk_name, pk_value):
+def maxwell_message(topic, database, table, type, data, pk_name, pk_value):
     key = json.dumps({
         "database": database,
         "table": table.lower(),
@@ -69,51 +69,51 @@ def maxwell_message(database, table, type, data, pk_name, pk_value):
         "ts": int(time()),
         "data": data
     }, separators=(',',':'))
-    return key, value
+    return topic, key, value
 
 
-def bootstrap_start_message(schema, database, table, config):
+def bootstrap_start_message(topic, schema, database, table, config):
     row_generator = RowGenerator.get_instance(schema, database, table, config)
     data = {}
     pk_name = row_generator.primary_key_field
     pk_value = None
-    return maxwell_message(database, table, "bootstrap-start", data, pk_name, pk_value)
+    return maxwell_message(topic, database, table, "bootstrap-start", data, pk_name, pk_value)
 
 
-def bootstrap_complete_message(schema, database, table, config):
+def bootstrap_complete_message(topic, schema, database, table, config):
     row_generator = RowGenerator.get_instance(schema, database, table, config)
     data = {}
     pk_name = row_generator.primary_key_field
     pk_value = None
-    return maxwell_message(database, table, "bootstrap-complete", data, pk_name, pk_value)
+    return maxwell_message(topic, database, table, "bootstrap-complete", data, pk_name, pk_value)
 
 
 def bootstrap(f_produce, partition_count, schema, database, table, config):
-    topic = config['kafka']['topic']
     start_time_millis = time() * 1000.0
     inserted_rows = 0
     total_rows = int(float(config['mysql']['schemas'][schema]['tables'][table][database]['size']))
+    topic = config['mysql']['schemas'][schema]['tables'][table][database]['topic']
 
     partition = abs(java_string_hashcode(database) % partition_count)
-    produce(f_produce, topic, partition, *bootstrap_start_message(schema, database, table, config))
+    produce(f_produce, partition, *bootstrap_start_message(topic, schema, database, table, config))
     last_display_progress = time()
-    for key, value in bootstrap_insert_messages(schema, database, table, config, total_rows):
-        produce(f_produce, topic, partition, key, value)
+    for _, key, value in bootstrap_insert_messages(topic, schema, database, table, config, total_rows):
+        produce(f_produce, partition, topic, key, value)
         inserted_rows += 1
         if time() - last_display_progress > (DISPLAY_PROGRESS_PERIOD_MILLIS / 1000.0):
             display_progress(total_rows, inserted_rows, start_time_millis)
             last_display_progress = time()
-    produce(f_produce, topic, partition, *bootstrap_complete_message(schema, database, table, config))
+    produce(f_produce, partition,  *bootstrap_complete_message(topic, schema, database, table, config))
     display_line("")
 
 
-def bootstrap_insert_messages(schema, database, table, config, rows_total):
+def bootstrap_insert_messages(topic, schema, database, table, config, rows_total):
     row_generator = RowGenerator.get_instance(schema, database, table, config)
     for row_index in xrange(rows_total):
         data = row_generator.generate_row(row_index)
         pk_name = row_generator.primary_key_field
         pk_value = row_generator.generate_primary_key(row_index)
-        yield maxwell_message(database, table, "bootstrap-insert", data, pk_name, pk_value)
+        yield maxwell_message(topic, database, table, "bootstrap-insert", data, pk_name, pk_value)
 
 
 def find_schema(config, database, table):
@@ -135,8 +135,8 @@ def main():
     parser.add_argument('--table', metavar='TABLE', type=str, required=True, help='table to bootstrap')
     parser.add_argument('--target', metavar='TARGET', type=str, required=True,
                         help='target system that messages will be output to')
-    parser.add_argument('--partition-count', metavar='PARTITION_COUNT', type=int, required=False,
-                        help='number of partitions (will read from kafka topic if not specified)')
+    parser.add_argument('--partition-count', metavar='PARTITION_COUNT', type=int, required=False, default=12,
+                        help='number of partitions (default 12)')
     args = parser.parse_args()
     config = yaml.load(open(args.config).read())
     validate_config(config)
@@ -153,15 +153,13 @@ def main():
 
 
 def produce_to_kafka(schema, args, config):
-    topic = config['kafka']['topic']
     producer = KafkaProducer(bootstrap_servers = config['kafka']['brokers'])
 
     def f_produce(topic, partition, key, value):
         producer.send(topic, key = key, value = value, partition = partition)
 
-    partition_count = 1 + max(producer.partitions_for(topic))
     try:
-        bootstrap(f_produce, partition_count, schema, args.database, args.table, config)
+        bootstrap(f_produce, args.partition_count, schema, args.database, args.table, config)
     except KeyboardInterrupt:
         sys.exit(1)
     producer.flush()
@@ -169,16 +167,6 @@ def produce_to_kafka(schema, args, config):
 
 
 def produce_to_bruce(schema, args, config):
-    topic = config['kafka']['topic']
-
-    if args.partition_count:
-        partition_count = args.partition_count
-    else:
-        print 'fetch partition info for topic ' + topic
-        producer = KafkaProducer(bootstrap_servers = config['kafka']['brokers'])
-        partition_count = 1 + max(producer.partitions_for(topic))
-        producer.close()
-
     socket = bruce.open_bruce_socket()
 
     # batching socket send
@@ -196,7 +184,7 @@ def produce_to_bruce(schema, args, config):
             flush_buff()
 
     try:
-        bootstrap(f_produce, partition_count, schema, args.database, args.table, config)
+        bootstrap(f_produce, args.partition_count, schema, args.database, args.table, config)
         flush_buff()
     except KeyboardInterrupt:
         sys.exit(1)
@@ -205,11 +193,6 @@ def produce_to_bruce(schema, args, config):
 
 
 def produce_to_console(schema, args, config):
-    # 12 by default
-    partition_count = 12
-    if args.partition_count:
-        partition_count = args.partition_count
-
     def f_produce(topic, partition, key, value):
         print json.dumps({
             "partition": partition,
@@ -218,7 +201,7 @@ def produce_to_console(schema, args, config):
         }, separators=(',',':'))
 
     try:
-        bootstrap(f_produce, partition_count, schema, args.database, args.table, config)
+        bootstrap(f_produce, args.partition_count, schema, args.database, args.table, config)
     except KeyboardInterrupt:
         sys.exit(1)
 
