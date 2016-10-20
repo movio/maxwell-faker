@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+
 import sys
 import json
 import yaml
@@ -166,6 +167,7 @@ def parse_rate(rate_srt):
 
 
 class Table(object):
+
     def __init__(self, max_id, schema, database, table_name, seed, row_gen):
         self.schema = schema
         self.database = database
@@ -176,6 +178,7 @@ class Table(object):
 
 
 class MessageProducer(object):
+
     def __init__(self, table, rate, operation, priority):
         self.table = table
         self.rate = rate

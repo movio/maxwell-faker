@@ -2,11 +2,13 @@
 
 import re
 import sys
+
 from utils import usage
 
 KAFKA_BROKER_CONNECTION_RE = re.compile('^.+:\d+$')
 FIELD_SPECIFICATION_RE = re.compile('^([^\[\?]+)(\[.*\])?(\?)?$')
 RATE_RE = re.compile('^\d+(.\d+)?\s*/\s*(second|minute|hour|day)$')
+
 
 class Field(object):
 
@@ -29,10 +31,12 @@ def check(message, predicate, path = None):
             sys.stderr.write('configuration error: ' + message + '\n')
         sys.exit(1)
 
+
 def validate_config(config):
     validate_generator_section(config)
     validate_kafka_section(config)
     validate_mysql_section(config)
+
 
 def validate_generator_section(config):
     check(
@@ -168,11 +172,13 @@ def validate_database_table_section(config, path, schema, table, database):
         path
     )
 
+
 def validate_table_template_section(config, path, schema, table):
     section = config['mysql']['schemas'][schema]['tables'][table]['template']
     for field in section:
         specification = config['mysql']['schemas'][schema]['tables'][table]['template'][field]
         validate_table_template_field_options(path + '.template.' + field, field, specification)
+
 
 def validate_table_template_field_options(path, field_name, specification):
     check(

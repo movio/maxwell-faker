@@ -8,9 +8,11 @@ VOWELS = [ 'a', 'e', 'i', 'o', 'u', 'y' ]
 
 SYLLABLES = [ c + v for c in CONSONANTS for v in VOWELS ]
 
+
 def usage(msg):
     sys.stderr.write('Error: ' + msg + '\n')
     sys.exit(1)
+
 
 def java_string_hashcode(s):
     """source: http://garage.pimentech.net/libcommonPython_src_python_libcommon_javastringhashcode/"""
@@ -19,14 +21,17 @@ def java_string_hashcode(s):
         h = (31 * h + ord(c)) & 0xFFFFFFFF
     return ((h + 0x80000000) & 0xFFFFFFFF) - 0x80000000
 
+
 def pseudorandom_long(specifier, lower, upper = None):
     if upper is None: lower, upper = 0, lower
     lower, upper = long(lower), long(upper)
     return (zlib.crc32("%s|%d|%d" % (specifier, lower, upper)) % (upper - lower)) + lower
 
+
 def pseudorandom_float(specifier, lower, upper = None):
     if upper is None: lower, upper = 0, lower
     return pseudorandom_long(specifier, lower * 100, upper * 100) / 100.0
+
 
 def pseudorandom_string(specifier, lower, upper = None):
     if upper is None: lower, upper = 0, lower
