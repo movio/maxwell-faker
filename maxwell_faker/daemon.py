@@ -13,7 +13,7 @@ from row_generator import RowGenerator
 from kafka import KafkaProducer
 
 
-def maxwell_message(database, table, operation, data, pk_name, pk_value):
+def maxwell_message(topic, database, table, operation, data, pk_name, pk_value):
     key = {
         "database": database,
         "table": table,
@@ -27,7 +27,7 @@ def maxwell_message(database, table, operation, data, pk_name, pk_value):
         "ts": int(time()),
         "data": data
     }
-    return key, value
+    return topic, key, value
 
 
 def main():
@@ -38,39 +38,35 @@ def main():
     parser.add_argument('--table', metavar='TABLE', type=str, required=False, help='table to produce')
     parser.add_argument('-c', action='store_true', required=False, help='produce message to console')
     parser.add_argument('--partition-count', metavar='PARTITION_COUNT', type=int, default=12, required=False,
-                        help='number of partitions (default 12, only take effect when -c specified)')
+                        help='number of partitions (default 12)')
     args = parser.parse_args()
 
     config = yaml.load(open(args.config).read())
     validate_config(config)
 
     try:
-        f_consume = generate_console_consumer(args) if args.c else generate_kafka_producer_consumer(config)
+        f_consume = generate_console_consumer(args) if args.c else generate_kafka_producer_consumer(config, args)
         produce_messages(f_consume, args, config)
     except KeyboardInterrupt:
         sys.exit(1)
 
 
-def generate_kafka_producer_consumer(config):
-    topic = config['kafka']['topic']
+def generate_kafka_producer_consumer(config, args):
     kafka_producer = KafkaProducer(bootstrap_servers=config['kafka']['brokers'])
-    partition_count = 1 + max(kafka_producer.partitions_for(topic))
 
-    def consume(key, value):
+    def consume(topic, key, value):
         database = key['database']
         key_str = json.dumps(key, separators=(',',':'))
         value_str = json.dumps(value, separators=(',',':'))
-        partition = abs(java_string_hashcode(database) % partition_count)
+        partition = abs(java_string_hashcode(database) % args.partition_count)
         kafka_producer.send(topic, key=key_str, value=value_str, partition=partition)
 
     return consume
 
 
 def generate_console_consumer(args):
-    partition_count = args.partition_count
-
-    def consume(key, value):
-        partition = abs(java_string_hashcode(key['database']) % partition_count)
+    def consume(topic, key, value):
+        partition = abs(java_string_hashcode(key['database']) % args.partition_count)
         output = {
             "partition": partition,
             "key": key,
@@ -89,7 +85,8 @@ def produce_messages(f_consume, args, config):
     for schema in config['mysql']['schemas']:
         for database in config['mysql']['schemas'][schema]['databases']:
             for table in config['mysql']['schemas'][schema]['tables']:
-                producers.extend(generate_producers_for_table(seed, schema, database, table, config))
+                topic = config['mysql']['schemas'][schema]['tables'][table][database]['topic']
+                producers.extend(generate_producers_for_table(topic, seed, schema, database, table, config))
 
     # Filter producer by arguments
     producers = filter(lambda x: args.schema is None or x.table.schema == args.schema, producers)
@@ -123,7 +120,7 @@ def zip_with(xs, y):
     return [(x, y) for x in xs]
 
 
-def generate_producers_for_table(seed, schema, database, table_name, config):
+def generate_producers_for_table(topic, seed, schema, database, table_name, config):
     operation_desc = config['mysql']['schemas'][schema]['tables'][table_name][database]
     max_id = int(float(operation_desc['size']))
     row_gen = RowGenerator.get_instance(schema, database, table_name, config)
@@ -132,17 +129,17 @@ def generate_producers_for_table(seed, schema, database, table_name, config):
 
     if operation_desc['insert-rate'] is not None:
         insert_rate = parse_rate(operation_desc['insert-rate'])
-        insert_producer = MessageProducer(table, insert_rate, "insert", 0)
+        insert_producer = MessageProducer(topic, table, insert_rate, "insert", 0)
         producers.append(insert_producer)
 
     if operation_desc['update-rate'] is not None:
         update_rate = parse_rate(operation_desc['update-rate'])
-        update_producer = MessageProducer(table, update_rate, "update", 1)
+        update_producer = MessageProducer(topic, table, update_rate, "update", 1)
         producers.append(update_producer)
 
     if operation_desc['delete-rate'] is not None:
         delete_rate = parse_rate(operation_desc['delete-rate'])
-        delete_producer = MessageProducer(table, delete_rate, "delete", 2)
+        delete_producer = MessageProducer(topic, table, delete_rate, "delete", 2)
         producers.append(delete_producer)
 
     return producers
@@ -179,7 +176,8 @@ class Table(object):
 
 class MessageProducer(object):
 
-    def __init__(self, table, rate, operation, priority):
+    def __init__(self, topic, table, rate, operation, priority):
+        self.topic = topic
         self.table = table
         self.rate = rate
         self.operation = operation
@@ -212,6 +210,6 @@ class MessageProducer(object):
         data = row_gen.generate_row(row_idx)
         pk_name = row_gen.primary_key_field
         pk_value = row_gen.generate_primary_key(row_idx)
-        return maxwell_message(self.table.database, self.table.table_name, self.operation, data, pk_name, pk_value)
+        return maxwell_message(self.topic, self.table.database, self.table.table_name, self.operation, data, pk_name, pk_value)
 
 

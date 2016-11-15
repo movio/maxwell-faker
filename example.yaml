@@ -6,7 +6,6 @@ kafka:
     - kafka1.example.com:9092
     - kafka2.example.com:9092
     - kafka3.example.com:9092
-  topic: maxwell-fake
 
 mysql:
   schemas:
@@ -22,12 +21,14 @@ mysql:
             insert-rate: 100 / second
             update-rate: 20 / second
             delete-rate: 20 / second
+            topic: customers
 
           store_records_initech:
             size: 2e6
             insert-rate: 20 / second
             update-rate: 4 / second
             delete-rate: 4 / second
+            topic: customers
 
           template:
             id: integer[primary-key]
@@ -44,12 +45,14 @@ mysql:
             insert-rate: 50 / second
             update-rate: 10 / second
             delete-rate: 10 / second
+            topic: orders
 
           store_records_initech:
             size: 10e3
             insert-rate: 10 / second
             update-rate: 2 / second
             delete-rate: 2 / second
+            topic: orders
 
           template:
             id: integer[primary-key]
@@ -63,12 +66,14 @@ mysql:
             insert-rate: 10 / second
             update-rate: 5 / second
             delete-rate: 5 / second
+            topic: items
 
           store_records_initech:
             size: 5
             insert-rate: 10 / second
             update-rate: 5 / second
             delete-rate: 5 / second
+            topic: items
 
           template:
             id: integer[primary-key]

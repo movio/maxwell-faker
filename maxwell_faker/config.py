@@ -65,11 +65,6 @@ def validate_kafka_section(config):
         type(config['kafka']['brokers']) is list,
         'kafka'
     )
-    check(
-        'section "topic" is missing',
-        'topic' in config['kafka'],
-        'kafka'
-    )
     for item in config['kafka']['brokers']:
         check(
             'brokers must be of format HOST:PORT',
@@ -154,6 +149,11 @@ def validate_database_table_section(config, path, schema, table, database):
     check(
         'section is missing "delete-rate"',
         'delete-rate' in section[database],
+        path
+    )
+    check(
+        'section is missing "topic"',
+        'topic' in section[database],
         path
     )
     check(
